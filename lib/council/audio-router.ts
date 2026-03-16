@@ -16,19 +16,19 @@
 // Each session's "input mix" = user mic + all OTHER sessions' outputs.
 // This way each specialist hears the human and all other specialists.
 
+interface SessionAudioState {
+  mix: MediaStreamAudioDestinationNode;
+  source: MediaStreamAudioSourceNode | null;
+  speakerGain: GainNode | null;
+  // All gain nodes created for cross-routing, keyed by the source session ID
+  crossGains: Map<string, GainNode>;
+}
+
 export class AudioRouter {
   private ctx: AudioContext | null = null;
   private micSource: MediaStreamAudioSourceNode | null = null;
   private micStream: MediaStream | null = null;
-
-  // Per-session: the mix destination that feeds into that session's RTCPeerConnection
-  private sessionMixes: Map<string, MediaStreamAudioDestinationNode> = new Map();
-  // Per-session: source node from the session's remote audio
-  private sessionSources: Map<string, MediaStreamAudioSourceNode> = new Map();
-  // Per-session: gain node for volume control of remote audio
-  private sessionGains: Map<string, GainNode> = new Map();
-
-  // Master output for user's speakers
+  private sessions: Map<string, SessionAudioState> = new Map();
   private speakerGain: GainNode | null = null;
 
   async initialize(): Promise<void> {
@@ -66,23 +66,32 @@ export class AudioRouter {
     }
 
     // Create a destination node that will produce the mixed stream
-    const mixDest = this.ctx.createMediaStreamDestination();
-    this.sessionMixes.set(sessionId, mixDest);
+    const mix = this.ctx.createMediaStreamDestination();
+
+    const state: SessionAudioState = {
+      mix,
+      source: null,
+      speakerGain: null,
+      crossGains: new Map(),
+    };
+    this.sessions.set(sessionId, state);
 
     // Connect user mic to this session's input
-    this.micSource.connect(mixDest);
+    this.micSource.connect(mix);
 
     // Connect all EXISTING other sessions' remote audio to this new session's input
-    for (const [otherId, otherSource] of this.sessionSources) {
-      if (otherId !== sessionId) {
+    for (const [otherId, otherState] of this.sessions) {
+      if (otherId !== sessionId && otherState.source) {
         const gain = this.ctx.createGain();
         gain.gain.value = 1.0;
-        otherSource.connect(gain);
-        gain.connect(mixDest);
+        otherState.source.connect(gain);
+        gain.connect(mix);
+        // Track this gain node on the SOURCE session so we can clean it up
+        otherState.crossGains.set(sessionId, gain);
       }
     }
 
-    return mixDest.stream;
+    return mix.stream;
   }
 
   // Register a session's remote audio output (called when RTCPeerConnection gets remote track).
@@ -92,13 +101,18 @@ export class AudioRouter {
       throw new Error('AudioRouter not initialized');
     }
 
-    const source = this.ctx.createMediaStreamSource(remoteStream);
-    this.sessionSources.set(sessionId, source);
+    const state = this.sessions.get(sessionId);
+    if (!state) {
+      throw new Error(`Session ${sessionId} not found in audio router`);
+    }
 
-    // Gain for this session's output volume
+    const source = this.ctx.createMediaStreamSource(remoteStream);
+    state.source = source;
+
+    // Gain for this session's output volume (controls speaker + all cross-routes)
     const gain = this.ctx.createGain();
     gain.gain.value = 1.0;
-    this.sessionGains.set(sessionId, gain);
+    state.speakerGain = gain;
 
     source.connect(gain);
 
@@ -106,41 +120,53 @@ export class AudioRouter {
     gain.connect(this.speakerGain);
 
     // Route to all OTHER sessions' input mixes (so they can hear this specialist)
-    for (const [otherId, otherMix] of this.sessionMixes) {
+    for (const [otherId, otherState] of this.sessions) {
       if (otherId !== sessionId) {
         const crossGain = this.ctx.createGain();
         crossGain.gain.value = 1.0;
         source.connect(crossGain);
-        crossGain.connect(otherMix);
+        crossGain.connect(otherState.mix);
+        // Track on THIS session so cleanup disconnects it
+        state.crossGains.set(otherId, crossGain);
       }
     }
   }
 
   // Remove a session (cleanup when disconnecting a specialist)
   removeSession(sessionId: string): void {
-    const source = this.sessionSources.get(sessionId);
-    if (source) {
-      source.disconnect();
-      this.sessionSources.delete(sessionId);
+    const state = this.sessions.get(sessionId);
+    if (!state) return;
+
+    // Disconnect this session's source and all its cross-gain nodes
+    if (state.source) {
+      state.source.disconnect();
     }
-    const gain = this.sessionGains.get(sessionId);
-    if (gain) {
+    if (state.speakerGain) {
+      state.speakerGain.disconnect();
+    }
+    for (const gain of state.crossGains.values()) {
       gain.disconnect();
-      this.sessionGains.delete(gain as unknown as string);
     }
-    const mix = this.sessionMixes.get(sessionId);
-    if (mix) {
-      // Don't disconnect — the RTCPeerConnection may still reference this
-      this.sessionMixes.delete(sessionId);
+
+    // Also clean up cross-gains that OTHER sessions have pointing to this session's mix
+    for (const [otherId, otherState] of this.sessions) {
+      if (otherId !== sessionId) {
+        const crossGain = otherState.crossGains.get(sessionId);
+        if (crossGain) {
+          crossGain.disconnect();
+          otherState.crossGains.delete(sessionId);
+        }
+      }
     }
-    this.sessionGains.delete(sessionId);
+
+    this.sessions.delete(sessionId);
   }
 
   // Mute/unmute a specific session's output
   setSessionVolume(sessionId: string, volume: number): void {
-    const gain = this.sessionGains.get(sessionId);
-    if (gain) {
-      gain.gain.value = Math.max(0, Math.min(1, volume));
+    const state = this.sessions.get(sessionId);
+    if (state?.speakerGain) {
+      state.speakerGain.gain.value = Math.max(0, Math.min(1, volume));
     }
   }
 
@@ -162,13 +188,15 @@ export class AudioRouter {
 
   // Tear down everything
   destroy(): void {
-    // Disconnect all sources
-    for (const source of this.sessionSources.values()) {
-      source.disconnect();
+    for (const state of this.sessions.values()) {
+      state.source?.disconnect();
+      state.speakerGain?.disconnect();
+      for (const gain of state.crossGains.values()) {
+        gain.disconnect();
+      }
     }
-    for (const gain of this.sessionGains.values()) {
-      gain.disconnect();
-    }
+    this.sessions.clear();
+
     this.micSource?.disconnect();
 
     // Stop mic tracks
@@ -183,9 +211,6 @@ export class AudioRouter {
       this.ctx.close();
     }
 
-    this.sessionMixes.clear();
-    this.sessionSources.clear();
-    this.sessionGains.clear();
     this.ctx = null;
     this.micSource = null;
     this.micStream = null;

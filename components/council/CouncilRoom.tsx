@@ -75,11 +75,10 @@ export function CouncilRoom({
             return next;
           });
         } else {
-          // Update partial transcript
+          // Update partial transcript — deltas are appended to build up the current utterance
           setTranscripts(prev => {
             const next = new Map(prev);
-            const current = next.get(specialist) || '';
-            next.set(specialist, current + text);
+            next.set(specialist, (prev.get(specialist) || '') + text);
             return next;
           });
         }
@@ -137,39 +136,47 @@ export function CouncilRoom({
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
-        const base64 = (reader.result as string).split(',')[1];
-        manager.sendImageToAll(base64, file.type);
-
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `file-${Date.now()}`,
-            from: 'You',
-            type: 'image',
-            content: reader.result as string,
-            timestamp: Date.now(),
-          },
-        ]);
+        try {
+          const base64 = (reader.result as string).split(',')[1];
+          manager.sendImageToAll(base64, file.type);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              from: 'You',
+              type: 'image',
+              content: reader.result as string,
+              timestamp: Date.now(),
+            },
+          ]);
+        } catch (err) {
+          console.error('Failed to send image:', err);
+        }
       };
+      reader.onerror = () => console.error('Failed to read file:', file.name);
       reader.readAsDataURL(file);
     } else {
       // For text files, read and send as text
       const reader = new FileReader();
       reader.onload = () => {
-        const text = `[File: ${file.name}]\n${reader.result as string}`;
-        manager.sendTextToAll(text);
-
-        setMessages(prev => [
-          ...prev,
-          {
-            id: `file-${Date.now()}`,
-            from: 'You',
-            type: 'file',
-            content: `Shared file: ${file.name}`,
-            timestamp: Date.now(),
-          },
-        ]);
+        try {
+          const text = `[File: ${file.name}]\n${reader.result as string}`;
+          manager.sendTextToAll(text);
+          setMessages(prev => [
+            ...prev,
+            {
+              id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              from: 'You',
+              type: 'file',
+              content: `Shared file: ${file.name}`,
+              timestamp: Date.now(),
+            },
+          ]);
+        } catch (err) {
+          console.error('Failed to send file:', err);
+        }
       };
+      reader.onerror = () => console.error('Failed to read file:', file.name);
       reader.readAsText(file);
     }
   }, []);

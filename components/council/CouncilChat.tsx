@@ -191,25 +191,98 @@ function MessageBubble({ message }: { message: ChatMessage }) {
   );
 }
 
-// Basic HTML sanitization — allow safe tags only
+// Allowlist-based HTML sanitizer — only safe tags and attributes survive
+const ALLOWED_TAGS = new Set([
+  'p', 'br', 'hr', 'b', 'i', 'em', 'strong', 'u', 's', 'small', 'sub', 'sup',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+  'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption', 'colgroup', 'col',
+  'div', 'span', 'blockquote', 'pre', 'code',
+  'a', 'img',
+]);
+
+const ALLOWED_ATTRS: Record<string, Set<string>> = {
+  '*': new Set(['class', 'style']),
+  a: new Set(['href', 'title', 'target', 'rel']),
+  img: new Set(['src', 'alt', 'width', 'height']),
+  td: new Set(['colspan', 'rowspan']),
+  th: new Set(['colspan', 'rowspan', 'scope']),
+  col: new Set(['span']),
+  colgroup: new Set(['span']),
+};
+
+// Max HTML size to prevent DoS
+const MAX_HTML_LENGTH = 50_000;
+
 function sanitizeHtml(html: string): string {
-  const div = document.createElement('div');
-  div.innerHTML = html;
+  // Truncate oversized content
+  if (html.length > MAX_HTML_LENGTH) {
+    html = html.slice(0, MAX_HTML_LENGTH) + '... (truncated)';
+  }
 
-  // Remove script tags and event handlers
-  const scripts = div.querySelectorAll('script');
-  scripts.forEach(s => s.remove());
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const clean = document.createDocumentFragment();
+  sanitizeNode(doc.body, clean);
 
-  // Remove event handler attributes
-  const allElements = div.querySelectorAll('*');
-  allElements.forEach(el => {
-    const attrs = Array.from(el.attributes);
-    for (const attr of attrs) {
-      if (attr.name.startsWith('on') || attr.name === 'href' && attr.value.startsWith('javascript:')) {
-        el.removeAttribute(attr.name);
-      }
+  const wrapper = document.createElement('div');
+  wrapper.appendChild(clean);
+  return wrapper.innerHTML;
+}
+
+function sanitizeNode(source: Node, target: Node): void {
+  for (const child of Array.from(source.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      target.appendChild(document.createTextNode(child.textContent || ''));
+      continue;
     }
-  });
 
-  return div.innerHTML;
+    if (child.nodeType !== Node.ELEMENT_NODE) continue;
+
+    const el = child as Element;
+    const tag = el.tagName.toLowerCase();
+
+    if (!ALLOWED_TAGS.has(tag)) {
+      // Strip the tag but keep its children
+      sanitizeNode(el, target);
+      continue;
+    }
+
+    const cleanEl = document.createElement(tag);
+
+    // Only copy allowed attributes
+    const globalAllowed = ALLOWED_ATTRS['*'] || new Set();
+    const tagAllowed = ALLOWED_ATTRS[tag] || new Set();
+
+    for (const attr of Array.from(el.attributes)) {
+      const name = attr.name.toLowerCase();
+      if (!globalAllowed.has(name) && !tagAllowed.has(name)) continue;
+
+      // Block dangerous attribute values
+      const val = attr.value;
+      if (name === 'href' || name === 'src') {
+        // Only allow http(s) and data: URIs
+        if (!/^(https?:|data:image\/|#|\/)/i.test(val)) continue;
+      }
+      if (name === 'style') {
+        // Strip any url(), expression(), or javascript: from style values
+        if (/url\s*\(|expression\s*\(|javascript:/i.test(val)) continue;
+      }
+      if (name === 'target') {
+        // Only allow _blank
+        cleanEl.setAttribute(name, '_blank');
+        cleanEl.setAttribute('rel', 'noopener noreferrer');
+        continue;
+      }
+
+      cleanEl.setAttribute(name, val);
+    }
+
+    // Force rel on links
+    if (tag === 'a' && cleanEl.getAttribute('target') === '_blank' && !cleanEl.getAttribute('rel')) {
+      cleanEl.setAttribute('rel', 'noopener noreferrer');
+    }
+
+    target.appendChild(cleanEl);
+    sanitizeNode(el, cleanEl);
+  }
 }

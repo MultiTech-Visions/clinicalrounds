@@ -60,9 +60,12 @@ export class CouncilManager {
       results.forEach((result, i) => {
         if (result.status === 'rejected') {
           const spec = selectedSpecialists[i];
+          const reason = result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason);
           this.callbacks.onError(
             spec,
-            `Failed to connect ${getMemberInfo(spec).name}: ${result.reason}`
+            `Failed to connect ${getMemberInfo(spec).name}: ${reason}`
           );
         }
       });
@@ -181,10 +184,18 @@ export class CouncilManager {
   // Tear down the entire council
   destroy(): void {
     for (const session of this.sessions.values()) {
-      session.disconnect();
+      try {
+        session.disconnect();
+      } catch {
+        // Best-effort cleanup
+      }
     }
     this.sessions.clear();
-    this.audioRouter.destroy();
+    try {
+      this.audioRouter.destroy();
+    } catch {
+      // Best-effort cleanup
+    }
     this._isActive = false;
   }
 }

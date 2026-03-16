@@ -2,101 +2,105 @@ import type { CouncilSpecialist, CouncilMemberInfo, OpenAIVoice } from './types'
 
 // Friendly names that make voice conversation natural
 // Instead of "Cardiologist, what do you think?" → "Cardi, what do you think?"
+//
+// Voice assignment: 8 OpenAI voices across 16 specialists (2 per voice).
+// Paired to maximize differentiation — specialists likely to be in the same
+// council session are assigned different voices.
 const COUNCIL_MEMBERS: Record<CouncilSpecialist, Omit<CouncilMemberInfo, 'specialist'>> = {
   attending: {
     name: 'Chief',
     title: 'Attending Hospitalist & Council Leader',
-    voice: 'ash',
+    voice: 'ash',        // 1/2 ash
     color: '#8B5CF6',    // purple - authority
   },
   cardiologist: {
     name: 'Cardi',
     title: 'Cardiologist',
-    voice: 'coral',
+    voice: 'coral',      // 1/2 coral
     color: '#EF4444',    // red - heart
   },
   pulmonologist: {
     name: 'Breezy',
     title: 'Pulmonologist',
-    voice: 'shimmer',
+    voice: 'shimmer',    // 1/2 shimmer
     color: '#06B6D4',    // cyan - air
   },
   nephrologist: {
     name: 'Rio',
     title: 'Nephrologist',
-    voice: 'echo',
+    voice: 'echo',       // 1/2 echo
     color: '#3B82F6',    // blue - water/flow
   },
   hepatologist: {
     name: 'Liv',
     title: 'Hepatologist',
-    voice: 'sage',
+    voice: 'sage',       // 1/2 sage
     color: '#84CC16',    // lime - liver
   },
   hematologist: {
     name: 'Ruby',
     title: 'Hematologist',
-    voice: 'ballad',
+    voice: 'ballad',     // 1/2 ballad
     color: '#DC2626',    // deep red - blood
   },
   id_specialist: {
     name: 'Scout',
     title: 'Infectious Disease Specialist',
-    voice: 'verse',
+    voice: 'verse',      // 1/2 verse
     color: '#F59E0B',    // amber - alert/detection
   },
   radiologist: {
     name: 'Ray',
     title: 'Radiologist',
-    voice: 'alloy',
+    voice: 'alloy',      // 1/2 alloy
     color: '#6366F1',    // indigo - imaging
   },
   pharmacist: {
     name: 'Rex',
     title: 'Clinical Pharmacist',
-    voice: 'echo',
+    voice: 'verse',      // 2/2 verse (paired w/ ID — rarely in same council)
     color: '#10B981',    // emerald - Rx
   },
   endocrinologist: {
     name: 'Harmony',
     title: 'Endocrinologist',
-    voice: 'shimmer',
+    voice: 'alloy',      // 2/2 alloy (paired w/ radiology — rarely overlap)
     color: '#EC4899',    // pink - balance
   },
   neurologist: {
     name: 'Nova',
     title: 'Neurologist',
-    voice: 'sage',
+    voice: 'coral',      // 2/2 coral (paired w/ cardiology — distinct domains)
     color: '#A855F7',    // violet - neural
   },
   intensivist: {
     name: 'Vigil',
     title: 'Critical Care Intensivist',
-    voice: 'ash',
+    voice: 'ballad',     // 2/2 ballad (paired w/ hematology)
     color: '#F97316',    // orange - urgency
   },
   oncologist: {
     name: 'Archer',
     title: 'Oncologist',
-    voice: 'verse',
+    voice: 'echo',       // 2/2 echo (paired w/ nephrology — distinct domains)
     color: '#14B8A6',    // teal - targeted therapy
   },
   psychiatrist: {
     name: 'Sage',
     title: 'Psychiatrist',
-    voice: 'ballad',
+    voice: 'sage',       // 2/2 sage (paired w/ hepatology — rarely overlap)
     color: '#8B5CF6',    // purple - wisdom
   },
   toxicologist: {
     name: 'Vex',
     title: 'Toxicologist',
-    voice: 'coral',
+    voice: 'ash',        // 2/2 ash (paired w/ attending — tox rarely chairs)
     color: '#FBBF24',    // yellow - hazard
   },
   palliative: {
     name: 'Grace',
     title: 'Palliative Care Specialist',
-    voice: 'shimmer',
+    voice: 'shimmer',    // 2/2 shimmer (paired w/ pulm — distinct roles)
     color: '#F9A8D4',    // soft pink - compassion
   },
 };

@@ -11,6 +11,22 @@ export interface SessionCallbacks {
   onError: (specialist: string, error: string) => void;
 }
 
+let msgCounter = 0;
+function uniqueId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${++msgCounter}`;
+}
+
+// Safely send a message on the data channel, catching errors if it closes mid-send
+function safeSend(dc: RTCDataChannel | null, data: string): boolean {
+  if (!dc || dc.readyState !== 'open') return false;
+  try {
+    dc.send(data);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class RealtimeSession {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
@@ -22,6 +38,7 @@ export class RealtimeSession {
   private caseContext: string;
   private _status: MemberConnectionStatus = 'idle';
   private remoteStream: MediaStream | null = null;
+  private audioRouterInitialized = false;
 
   constructor(
     member: CouncilMemberInfo,
@@ -86,6 +103,7 @@ export class RealtimeSession {
 
       // 3. Get the mixed audio input for this session from the audio router
       const inputStream = this.audioRouter.createSessionInput(this.member.specialist);
+      this.audioRouterInitialized = true;
       const audioTrack = inputStream.getAudioTracks()[0];
       if (audioTrack) {
         this.pc.addTrack(audioTrack, inputStream);
@@ -95,7 +113,11 @@ export class RealtimeSession {
       this.pc.ontrack = (event) => {
         this.remoteStream = event.streams[0] || new MediaStream([event.track]);
         // Register this specialist's audio output with the router
-        this.audioRouter.addRemoteAudio(this.member.specialist, this.remoteStream);
+        try {
+          this.audioRouter.addRemoteAudio(this.member.specialist, this.remoteStream);
+        } catch (err) {
+          console.error(`Failed to route audio for ${this.member.name}:`, err);
+        }
       };
 
       // 5. Create data channel for events
@@ -105,6 +127,11 @@ export class RealtimeSession {
       };
       this.dc.onmessage = (event) => {
         this.handleDataChannelMessage(event.data);
+      };
+      this.dc.onclose = () => {
+        if (this._status !== 'disconnected') {
+          this.setStatus('disconnected');
+        }
       };
 
       // 6. Create SDP offer and connect to OpenAI
@@ -142,6 +169,16 @@ export class RealtimeSession {
       };
 
     } catch (error) {
+      // Clean up audio router if we initialized it
+      if (this.audioRouterInitialized) {
+        this.audioRouter.removeSession(this.member.specialist);
+        this.audioRouterInitialized = false;
+      }
+      // Clean up peer connection if created
+      if (this.pc) {
+        this.pc.close();
+        this.pc = null;
+      }
       const message = error instanceof Error ? error.message : 'Connection failed';
       this.callbacks.onError(this.member.specialist, message);
       this.setStatus('error');
@@ -151,8 +188,6 @@ export class RealtimeSession {
 
   // Send a text message to this specialist via the data channel
   sendText(text: string): void {
-    if (!this.dc || this.dc.readyState !== 'open') return;
-
     const event = {
       type: 'conversation.item.create',
       item: {
@@ -161,17 +196,12 @@ export class RealtimeSession {
         content: [{ type: 'input_text', text }],
       },
     };
-    this.dc.send(JSON.stringify(event));
-
-    // Trigger a response
-    this.dc.send(JSON.stringify({ type: 'response.create' }));
+    if (!safeSend(this.dc, JSON.stringify(event))) return;
+    safeSend(this.dc, JSON.stringify({ type: 'response.create' }));
   }
 
   // Send an image to this specialist
   sendImage(base64Image: string, mimeType: string = 'image/png'): void {
-    if (!this.dc || this.dc.readyState !== 'open') return;
-
-    // Note: images go as a user message with image content
     const event = {
       type: 'conversation.item.create',
       item: {
@@ -186,14 +216,12 @@ export class RealtimeSession {
         ],
       },
     };
-    this.dc.send(JSON.stringify(event));
-    this.dc.send(JSON.stringify({ type: 'response.create' }));
+    if (!safeSend(this.dc, JSON.stringify(event))) return;
+    safeSend(this.dc, JSON.stringify({ type: 'response.create' }));
   }
 
   // Inject a system-level notification (e.g., "Dr. Smith has joined")
   sendSystemEvent(text: string): void {
-    if (!this.dc || this.dc.readyState !== 'open') return;
-
     const event = {
       type: 'conversation.item.create',
       item: {
@@ -202,7 +230,7 @@ export class RealtimeSession {
         content: [{ type: 'input_text', text: `[SYSTEM]: ${text}` }],
       },
     };
-    this.dc.send(JSON.stringify(event));
+    safeSend(this.dc, JSON.stringify(event));
   }
 
   private handleDataChannelMessage(raw: string): void {
@@ -217,7 +245,6 @@ export class RealtimeSession {
   private handleEvent(event: Record<string, unknown>): void {
     switch (event.type) {
       case 'response.audio_transcript.delta': {
-        // Partial transcript of specialist speaking
         const delta = event.delta as string;
         if (delta) {
           this.callbacks.onTranscript(this.member.specialist, delta, false);
@@ -226,7 +253,6 @@ export class RealtimeSession {
       }
 
       case 'response.audio_transcript.done': {
-        // Final transcript of what the specialist said
         const transcript = event.transcript as string;
         if (transcript) {
           this.callbacks.onTranscript(this.member.specialist, transcript, true);
@@ -284,7 +310,7 @@ export class RealtimeSession {
     switch (name) {
       case 'post_to_chat': {
         const msg: ChatMessage = {
-          id: `${this.member.specialist}-${Date.now()}`,
+          id: uniqueId(`${this.member.specialist}-chat`),
           from: this.member.name,
           specialist: this.member.specialist,
           type: 'html',
@@ -299,7 +325,7 @@ export class RealtimeSession {
       case 'request_floor': {
         this.setStatus('hand_raised');
         const msg: ChatMessage = {
-          id: `${this.member.specialist}-floor-${Date.now()}`,
+          id: uniqueId(`${this.member.specialist}-floor`),
           from: this.member.name,
           specialist: this.member.specialist,
           type: 'system',
@@ -313,7 +339,7 @@ export class RealtimeSession {
 
       case 'point_of_order': {
         const msg: ChatMessage = {
-          id: `${this.member.specialist}-poo-${Date.now()}`,
+          id: uniqueId(`${this.member.specialist}-poo`),
           from: this.member.name,
           specialist: this.member.specialist,
           type: 'system',
@@ -332,8 +358,6 @@ export class RealtimeSession {
   }
 
   private sendToolResult(callId: string, result: string): void {
-    if (!this.dc || this.dc.readyState !== 'open') return;
-
     const event = {
       type: 'conversation.item.create',
       item: {
@@ -342,9 +366,8 @@ export class RealtimeSession {
         output: result,
       },
     };
-    this.dc.send(JSON.stringify(event));
-    // Trigger response after tool result
-    this.dc.send(JSON.stringify({ type: 'response.create' }));
+    if (!safeSend(this.dc, JSON.stringify(event))) return;
+    safeSend(this.dc, JSON.stringify({ type: 'response.create' }));
   }
 
   disconnect(): void {
@@ -356,7 +379,10 @@ export class RealtimeSession {
       this.pc.close();
       this.pc = null;
     }
-    this.audioRouter.removeSession(this.member.specialist);
+    if (this.audioRouterInitialized) {
+      this.audioRouter.removeSession(this.member.specialist);
+      this.audioRouterInitialized = false;
+    }
     this.remoteStream = null;
     this.setStatus('disconnected');
   }
