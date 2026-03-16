@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CouncilChat } from './CouncilChat';
+import { CouncilTable } from './pixels/CouncilTable';
+import { PixelAvatar } from './pixels/PixelAvatar';
 import { CouncilManager } from '@/lib/council/council-manager';
 import { getMemberInfo } from '@/lib/council/specialist-names';
 import type {
@@ -258,26 +260,33 @@ export function CouncilRoom({
         </div>
       </div>
 
-      {/* Main content: members grid + chat */}
+      {/* Main content: pixel scene + members + chat */}
       <div className="flex flex-1 gap-4 overflow-hidden">
-        {/* Members panel */}
-        <div className="w-64 shrink-0 space-y-2 overflow-y-auto">
-          <h3 className="text-sm font-semibold text-muted-foreground">
-            Members
-          </h3>
-          {members.map(m => {
-            const info = getMemberInfo(m.specialist);
-            return (
-              <MemberTile
-                key={m.specialist}
-                name={info.name}
-                title={info.title}
-                color={info.color}
-                status={m.status}
-                isLeader={m.specialist === leader}
-              />
-            );
-          })}
+        {/* Left panel: pixel council room + member list */}
+        <div className="w-80 shrink-0 space-y-3 overflow-y-auto">
+          {/* Pixel art council scene */}
+          <CouncilTable
+            members={members}
+            leader={leader}
+          />
+
+          {/* Member list with pixel avatars */}
+          <div className="space-y-1.5">
+            {members.map(m => {
+              const info = getMemberInfo(m.specialist);
+              return (
+                <MemberTile
+                  key={m.specialist}
+                  specialist={m.specialist}
+                  name={info.name}
+                  title={info.title}
+                  color={info.color}
+                  status={m.status}
+                  isLeader={m.specialist === leader}
+                />
+              );
+            })}
+          </div>
         </div>
 
         {/* Chat viewport */}
@@ -295,12 +304,14 @@ export function CouncilRoom({
 }
 
 function MemberTile({
+  specialist,
   name,
   title,
   color,
   status,
   isLeader,
 }: {
+  specialist: CouncilSpecialist;
   name: string;
   title: string;
   color: string;
@@ -322,7 +333,7 @@ function MemberTile({
 
   return (
     <div
-      className="flex items-center gap-3 rounded-lg border border-border p-3 transition-all"
+      className="flex items-center gap-2 rounded-lg border border-border p-2 transition-all"
       style={{
         borderLeftColor: color,
         borderLeftWidth: '3px',
@@ -332,36 +343,28 @@ function MemberTile({
             : undefined,
       }}
     >
-      {/* Animated indicator */}
-      <div className="relative">
-        <div
-          className="h-8 w-8 rounded-full"
-          style={{ backgroundColor: `${color}30` }}
-        />
+      {/* Pixel avatar */}
+      <div className="relative shrink-0">
+        <PixelAvatar specialist={specialist} status={status} size={2} />
         {status === 'speaking' && (
           <div
-            className="absolute inset-0 animate-ping rounded-full opacity-40"
+            className="absolute inset-0 animate-ping rounded opacity-20"
             style={{ backgroundColor: color }}
           />
-        )}
-        {status === 'hand_raised' && (
-          <span className="absolute -right-1 -top-1 text-sm">
-            &#9995;
-          </span>
         )}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <span className="text-sm font-medium truncate">{name}</span>
+          <span className="text-xs font-semibold truncate">{name}</span>
           {isLeader && (
-            <span className="text-[10px] font-bold text-muted-foreground">
+            <span className="text-[9px] font-bold text-muted-foreground">
               CHAIR
             </span>
           )}
         </div>
-        <div className="text-[10px] text-muted-foreground truncate">{title}</div>
-        <Badge variant={variant} className="mt-1 text-[10px]">
+        <div className="text-[9px] text-muted-foreground truncate">{title}</div>
+        <Badge variant={variant} className="mt-0.5 text-[9px] px-1 py-0">
           {label}
         </Badge>
       </div>

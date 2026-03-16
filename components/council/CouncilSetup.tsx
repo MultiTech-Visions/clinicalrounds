@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { PixelAvatar } from './pixels/PixelAvatar';
 import type { CouncilSpecialist, CouncilMemberInfo } from '@/lib/council/types';
 import { getAllMembers } from '@/lib/council/specialist-names';
 
@@ -168,11 +169,14 @@ function MemberCard({
           : 'border-border hover:border-muted-foreground/50'
       }`}
     >
-      {/* Color dot */}
-      <div
-        className="mb-2 h-3 w-3 rounded-full"
-        style={{ backgroundColor: member.color }}
-      />
+      {/* Pixel avatar */}
+      <div className="mb-1 flex justify-center">
+        <PixelAvatar
+          specialist={member.specialist}
+          status={isSelected ? 'connected' : 'idle'}
+          size={3}
+        />
+      </div>
 
       <div className="text-sm font-semibold">{member.name}</div>
       <div className="text-xs text-muted-foreground">{member.title}</div>
