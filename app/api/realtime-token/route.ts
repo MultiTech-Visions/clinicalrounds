@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         instructions,
         tools,
         input_audio_transcription: {
-          model: 'gpt-4o-mini-transcription',
+          model: 'gpt-4o-mini-transcribe',
         },
         turn_detection: {
           type: 'server_vad',
