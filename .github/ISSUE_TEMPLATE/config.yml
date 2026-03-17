@@ -1,5 +1,0 @@
-blank_issues_enabled: true
-contact_links:
-  - name: Clinical Prompt Improvement
-    url: https://github.com/jeffbander/clinicalrounds/issues/new?labels=clinical-prompt&template=feature_request.yml
-    about: Suggest improvements to specialist clinical reasoning (clinicians welcome)

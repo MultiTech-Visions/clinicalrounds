@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClinicalRounds - Analysis</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>ClinicalRounds</h1>
+      <div class="app-header-actions">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">AI clinical reasoning aid. Not for diagnostic decisions.</span>
+      </div>
+    </header>
+
+    <!-- Patient Summary -->
+    <div id="patient-summary" class="patient-summary"></div>
+
+    <!-- Critical Alert Banner -->
+    <div id="critical-alert" class="critical-alert">
+      <div class="critical-alert-title">Critical Alerts</div>
+      <ul id="critical-alert-list" class="critical-alert-list"></ul>
+    </div>
+
+    <!-- Phase Indicator -->
+    <div class="phase-bar" id="phase-bar">
+      <div class="phase-step" data-phase="intake">Intake</div>
+      <span class="phase-arrow">&#9654;</span>
+      <div class="phase-step" data-phase="specialists">Specialists</div>
+      <span class="phase-arrow">&#9654;</span>
+      <div class="phase-step" data-phase="cross_consult">Cross-Consult</div>
+      <span class="phase-arrow">&#9654;</span>
+      <div class="phase-step" data-phase="synthesis">Synthesis</div>
+      <span class="phase-arrow">&#9654;</span>
+      <div class="phase-step" data-phase="complete">Complete</div>
+    </div>
+
+    <!-- Specialist Grid -->
+    <div id="specialist-grid" class="specialist-grid"></div>
+
+    <!-- Cross-Consultation Panel -->
+    <div id="cross-consult-panel" class="cross-consult-panel" style="display: none;">
+      <h3>Cross-Consultation</h3>
+      <div id="cross-consult-messages"></div>
+    </div>
+
+    <!-- Synthesis View -->
+    <div id="synthesis-view" class="synthesis-view" style="display: none;">
+      <h3>Clinical Synthesis</h3>
+      <div id="synthesis-content" class="synthesis-content"></div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div id="action-buttons" class="action-buttons">
+      <button class="btn btn-primary" id="btn-new-case">Start New Case</button>
+      <button class="btn" id="btn-ask-specialist">Ask Specialist</button>
+      <a href="/council.html" class="btn">Voice Council</a>
+    </div>
+  </div>
+
+  <!-- Shutdown Button -->
+  <button id="shutdown-btn" class="btn btn-danger shutdown-btn" title="Shutdown server">Shutdown</button>
+
+  <!-- Specialist Chat Modal -->
+  <div id="chat-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Ask a Specialist</h3>
+        <button class="modal-close" id="modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <select id="chat-specialist-select">
+          <option value="">Select a specialist...</option>
+        </select>
+        <textarea id="chat-question" placeholder="Type your question..."></textarea>
+        <div id="chat-messages" class="chat-messages"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="btn-chat-cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-chat-send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

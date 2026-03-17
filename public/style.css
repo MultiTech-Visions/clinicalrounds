@@ -1,0 +1,742 @@
+/* ===== ClinicalRounds - Shared Styles ===== */
+
+/* --- CSS Variables --- */
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --surface2: #334155;
+  --border: #475569;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+}
+
+/* --- Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* --- Layout --- */
+.container {
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* --- Card --- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  border-color: var(--accent);
+}
+
+/* --- Buttons --- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--surface2);
+  border-color: var(--text-muted);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* --- Shutdown Button --- */
+.shutdown-btn {
+  position: fixed;
+  bottom: 1.25rem;
+  right: 1.25rem;
+  z-index: 1000;
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.shutdown-btn:hover {
+  opacity: 1;
+}
+
+/* --- Specialist Cards --- */
+.specialist-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.specialist-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.specialist-card .specialist-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.specialist-card .specialist-icon {
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.specialist-card .specialist-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.specialist-card .specialist-body {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  min-height: 2.5rem;
+}
+
+/* Status indicator dot */
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Status: waiting */
+.specialist-card[data-status="waiting"] {
+  opacity: 0.6;
+}
+
+.specialist-card[data-status="waiting"] .status-dot {
+  background: var(--text-muted);
+}
+
+/* Status: analyzing */
+.specialist-card[data-status="analyzing"] {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.15);
+}
+
+.specialist-card[data-status="analyzing"] .status-dot {
+  background: var(--accent);
+  animation: pulse-dot 1.2s ease-in-out infinite;
+}
+
+/* Status: complete */
+.specialist-card[data-status="complete"] {
+  border-color: var(--success);
+}
+
+.specialist-card[data-status="complete"] .status-dot {
+  background: var(--success);
+}
+
+/* Status: error */
+.specialist-card[data-status="error"] {
+  border-color: var(--danger);
+  opacity: 0.7;
+}
+
+.specialist-card[data-status="error"] .status-dot {
+  background: var(--danger);
+}
+
+/* Status: critical (specialist flagged critical concern) */
+.specialist-card[data-status="critical"] {
+  border-color: var(--danger);
+  box-shadow: 0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+.specialist-card[data-status="critical"] .status-dot {
+  background: var(--danger);
+  animation: pulse-dot 0.8s ease-in-out infinite;
+}
+
+/* --- Severity Badges --- */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge-critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger);
+}
+
+.badge-high {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning);
+}
+
+.badge-moderate {
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--accent);
+}
+
+.badge-low {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--success);
+}
+
+/* --- Findings count --- */
+.findings-count {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.4rem;
+}
+
+/* --- Phase Indicator --- */
+.phase-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+}
+
+.phase-step {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: all 0.3s;
+}
+
+.phase-step:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.phase-step:last-child {
+  border-radius: 0 8px 8px 0;
+}
+
+.phase-step.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.phase-step.done {
+  background: rgba(34, 197, 94, 0.15);
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.phase-arrow {
+  color: var(--border);
+  font-size: 0.7rem;
+  margin: 0 -1px;
+  z-index: 1;
+}
+
+/* --- Cross-Consult Panel --- */
+.cross-consult-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.cross-consult-panel h3 {
+  font-size: 0.95rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.consult-message {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+}
+
+.consult-message:last-child {
+  border-bottom: none;
+}
+
+.consult-from {
+  font-weight: 600;
+  color: var(--accent);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.consult-arrow {
+  color: var(--text-muted);
+}
+
+.consult-to {
+  font-weight: 600;
+  color: var(--success);
+  white-space: nowrap;
+  min-width: 100px;
+}
+
+.consult-text {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* --- Synthesis View --- */
+.synthesis-view {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin: 1.5rem 0;
+  line-height: 1.7;
+  font-size: 0.92rem;
+}
+
+.synthesis-view h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.synthesis-content {
+  color: var(--text);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.synthesis-content h1,
+.synthesis-content h2,
+.synthesis-content h3,
+.synthesis-content h4 {
+  color: var(--accent);
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.synthesis-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--accent);
+  animation: blink-cursor 0.8s step-end infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+/* --- Critical Alert Banner --- */
+.critical-alert {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid var(--danger);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  display: none;
+}
+
+.critical-alert.visible {
+  display: block;
+  animation: slideDown 0.3s ease-out;
+}
+
+.critical-alert-title {
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.critical-alert-list {
+  list-style: none;
+  padding: 0;
+}
+
+.critical-alert-list li {
+  color: var(--text);
+  font-size: 0.85rem;
+  padding: 0.25rem 0;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.critical-alert-list li::before {
+  content: '!';
+  position: absolute;
+  left: 0;
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* --- Patient Summary Bar --- */
+.patient-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  display: none;
+}
+
+.patient-summary.visible {
+  display: block;
+}
+
+.patient-summary strong {
+  color: var(--text);
+}
+
+/* --- App Header --- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.app-header h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.app-header-actions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* --- Action Buttons (post-synthesis) --- */
+.action-buttons {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  flex-wrap: wrap;
+  display: none;
+}
+
+.action-buttons.visible {
+  display: flex;
+}
+
+/* --- Specialist Chat Modal --- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 900;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.visible {
+  display: flex;
+}
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: var(--text);
+}
+
+.modal-body {
+  padding: 1.25rem;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.modal-body select {
+  width: 100%;
+  padding: 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  font-family: inherit;
+}
+
+.modal-body textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.modal-body textarea:focus,
+.modal-body select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.chat-messages {
+  margin-top: 1rem;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.chat-msg {
+  padding: 0.75rem;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.chat-msg-user {
+  background: rgba(59, 130, 246, 0.15);
+  text-align: right;
+}
+
+.chat-msg-specialist {
+  background: var(--bg);
+}
+
+.modal-footer {
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* --- Scrollbar --- */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* --- Animations --- */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading shimmer for analyzing cards */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.specialist-card[data-status="analyzing"] .specialist-body::after {
+  content: 'Analyzing...';
+  display: block;
+  background: linear-gradient(90deg, var(--text-muted) 25%, var(--text) 50%, var(--text-muted) 75%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 1.5s linear infinite;
+  font-size: 0.75rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 1100px) {
+  .specialist-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .specialist-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .phase-bar {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .phase-step {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .container {
+    padding: 0 1rem;
+  }
+
+  .app-header h1 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .specialist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+  }
+
+  .action-buttons .btn {
+    width: 100%;
+  }
+}

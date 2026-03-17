@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ClinicalRounds</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .landing {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+
+    .landing-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .landing-header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      letter-spacing: -0.02em;
+    }
+
+    .landing-header .subtitle {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .disclaimer {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid var(--warning);
+      border-radius: 8px;
+      padding: 0.75rem 1.25rem;
+      color: var(--warning);
+      font-size: 0.85rem;
+      text-align: center;
+      max-width: 600px;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+
+    .input-section {
+      width: 100%;
+      max-width: 700px;
+    }
+
+    .input-section label {
+      display: block;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .notes-textarea {
+      width: 100%;
+      min-height: 300px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Menlo', 'Consolas', 'Monaco', monospace;
+      font-size: 0.85rem;
+      padding: 1rem;
+      resize: vertical;
+      line-height: 1.6;
+      transition: border-color 0.2s;
+      box-sizing: border-box;
+    }
+
+    .notes-textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .notes-textarea::placeholder {
+      color: var(--text-muted);
+      opacity: 0.6;
+    }
+
+    .options {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .options input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .options label {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-begin {
+      width: 100%;
+      padding: 0.9rem 2rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+
+    .council-link {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .council-link:hover {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <main class="landing">
+    <header class="landing-header">
+      <h1>ClinicalRounds</h1>
+      <p class="subtitle">AI-Powered Multidisciplinary Clinical Case Review</p>
+    </header>
+
+    <div class="disclaimer">
+      AI clinical reasoning aid. Does not replace physician clinical judgment. Not for diagnostic or treatment decisions.
+    </div>
+
+    <div class="input-section">
+      <label for="clinical-notes">Paste clinical notes (Epic notes)</label>
+      <textarea
+        id="clinical-notes"
+        class="notes-textarea"
+        placeholder="Paste the patient's clinical notes here...&#10;&#10;Include H&amp;P, labs, imaging, medications, vitals, and any other relevant data."
+      ></textarea>
+
+      <div class="options">
+        <input type="checkbox" id="web-search" checked>
+        <label for="web-search">Enable Web Search (searches medical literature)</label>
+      </div>
+
+      <div class="actions">
+        <button id="begin-btn" class="btn btn-primary btn-begin" disabled>Begin Analysis</button>
+        <a href="/council.html" class="council-link">Voice Council</a>
+      </div>
+    </div>
+  </main>
+
+  <button id="shutdown-btn" class="btn btn-danger shutdown-btn" title="Shutdown server">Shutdown</button>
+
+  <script>
+    const textarea = document.getElementById('clinical-notes');
+    const beginBtn = document.getElementById('begin-btn');
+    const shutdownBtn = document.getElementById('shutdown-btn');
+    const webSearchCheckbox = document.getElementById('web-search');
+
+    textarea.addEventListener('input', function () {
+      beginBtn.disabled = this.value.trim().length === 0;
+    });
+
+    beginBtn.addEventListener('click', function () {
+      const notes = textarea.value.trim();
+      if (!notes) return;
+
+      sessionStorage.setItem('rawNotes', notes);
+      sessionStorage.setItem('webSearchEnabled', webSearchCheckbox.checked ? 'true' : 'false');
+      window.location.href = 'app.html';
+    });
+
+    shutdownBtn.addEventListener('click', async function () {
+      try {
+        await fetch('/api/shutdown', { method: 'POST' });
+      } catch (e) {
+        // Server may close before response completes
+      }
+      window.close();
+    });
+  </script>
+</body>
+</html>
