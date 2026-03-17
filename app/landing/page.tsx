@@ -160,12 +160,19 @@ export default function LandingPage() {
             </a>
           </div>
 
-          <Link href="/">
-            <Button size="sm">
-              Start Review
-              <ArrowRight className="ml-1 h-3.5 w-3.5" />
-            </Button>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/council">
+              <Button size="sm" variant="outline">
+                Voice Council
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button size="sm">
+                Start Review
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </Link>
+          </div>
         </div>
       </nav>
 
@@ -195,6 +202,15 @@ export default function LandingPage() {
                 <Button size="lg" className="w-full sm:w-auto">
                   <Sparkles className="mr-2 h-4 w-4" />
                   Start a Case Review
+                </Button>
+              </Link>
+              <Link href="/council">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="w-full sm:w-auto"
+                >
+                  Voice Council
                 </Button>
               </Link>
               <a href="#how-it-works">

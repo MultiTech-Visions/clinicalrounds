@@ -94,11 +94,39 @@ if %errorlevel% equ 0 (
     set /p APIKEY="  Paste your Anthropic API key now (or press Enter to skip): "
     if not "!APIKEY!"=="" (
         echo ANTHROPIC_API_KEY=!APIKEY!> ".env.local"
+        echo OPENAI_API_KEY=your-openai-key-here>> ".env.local"
         echo.
-        echo   API key saved to .env.local
+        echo   Anthropic API key saved to .env.local
     ) else (
         echo.
         echo   Skipped. Remember to edit .env.local before running the app.
+    )
+    endlocal
+    echo.
+)
+
+REM --- Optional: OpenAI key for Voice Council ---
+findstr /C:"your-openai-key-here" ".env.local" >nul 2>nul
+if %errorlevel% equ 0 (
+    echo ============================================
+    echo   OPTIONAL: OpenAI API key (Voice Council)
+    echo ============================================
+    echo.
+    echo   The Voice Council feature uses OpenAI's
+    echo   Realtime API for live voice conversations.
+    echo   Get a key at: https://platform.openai.com/api-keys
+    echo.
+
+    setlocal enabledelayedexpansion
+    set /p OAIKEY="  Paste your OpenAI API key now (or press Enter to skip): "
+    if not "!OAIKEY!"=="" (
+        REM Replace the placeholder in .env.local
+        powershell -Command "(Get-Content '.env.local') -replace 'your-openai-key-here', '!OAIKEY!' | Set-Content '.env.local'"
+        echo.
+        echo   OpenAI API key saved to .env.local
+    ) else (
+        echo.
+        echo   Skipped. Voice Council won't work without it.
     )
     endlocal
     echo.
