@@ -3,11 +3,14 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const url = require('url');
+const { exec } = require('child_process');
 const orchestrator = require('./lib/orchestrator');
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
 const PORT = parseInt(process.env.PORT, 10) || 3000;
+const HOST = '0.0.0.0';
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -16,6 +19,7 @@ const MIME_TYPES = {
   '.json': 'application/json',
   '.svg':  'image/svg+xml',
   '.png':  'image/png',
+  '.jpg':  'image/jpeg',
   '.ico':  'image/x-icon',
 };
 
@@ -76,6 +80,8 @@ function sendError(res, statusCode, message) {
 function serveStatic(req, res) {
   let urlPath = req.url.split('?')[0]; // strip query string
   if (urlPath === '/') urlPath = '/index.html';
+  else if (urlPath === '/app') urlPath = '/app.html';
+  else if (urlPath === '/council') urlPath = '/council.html';
 
   const filePath = path.normalize(path.join(__dirname, 'public', urlPath));
   const publicDir = path.resolve(path.join(__dirname, 'public'));
@@ -142,7 +148,15 @@ async function handleAnalyze(req, res) {
       (specialist, error) => {
         sendSSE(res, { type: 'specialist_error', specialist, error });
       },
-      { webSearchEnabled: !!webSearchEnabled }
+      {
+        webSearchEnabled: !!webSearchEnabled,
+        onSearch: (specialist, query) => {
+          sendSSE(res, { type: 'specialist_search', specialist, query });
+        },
+        onCalculation: (specialist, code) => {
+          sendSSE(res, { type: 'specialist_calculation', specialist, code });
+        },
+      }
     );
 
     sendSSE(res, { type: 'analyze_done' });
@@ -169,11 +183,20 @@ async function handleCrossConsult(req, res) {
   startSSE(res);
 
   try {
-    await orchestrator.runCrossConsultStreaming(analyses, intakeData, (message) => {
-      sendSSE(res, { type: 'cross_consult_message', message });
+    await orchestrator.runMultiRoundCrossConsult(analyses, intakeData, {
+      onRoundStart: (round) => {
+        sendSSE(res, { type: 'round_start', round });
+      },
+      onMessage: (message) => {
+        sendSSE(res, { type: 'cross_consult_message', message });
+      },
+      onRoundDone: (round, results) => {
+        sendSSE(res, { type: 'round_done', round, count: results.length });
+      },
+      onComplete: (allConsults) => {
+        sendSSE(res, { type: 'all_rounds_complete', totalConsults: allConsults.length });
+      },
     });
-
-    sendSSE(res, { type: 'cross_consult_done' });
   } catch (err) {
     sendSSE(res, { type: 'error', error: err.message || String(err) });
   }
@@ -336,9 +359,17 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`ClinicalRounds server running at http://localhost:${PORT}`);
   console.log('');
   console.log('AI clinical reasoning aid. Does not replace physician clinical judgment.');
   console.log('Not for diagnostic or treatment decisions.');
+
+  // Auto-open browser if not in CI
+  if (!process.env.CI) {
+    const openUrl = `http://localhost:${PORT}`;
+    const platform = process.platform;
+    const cmd = platform === 'win32' ? 'start' : platform === 'darwin' ? 'open' : 'xdg-open';
+    exec(`${cmd} ${openUrl}`);
+  }
 });
