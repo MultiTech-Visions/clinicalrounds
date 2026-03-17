@@ -13,8 +13,9 @@ if %errorlevel% neq 0 (
 )
 
 echo Installing dependencies...
-npm install
+call npm install
 if %errorlevel% neq 0 (
+    echo.
     echo ERROR: npm install failed.
     pause
     exit /b 1
