@@ -106,7 +106,7 @@ const VISUALS: Record<CouncilSpecialist, SpecialistVisual> = {
   neurologist:     { hairStyle: 5, hairColor: '#6B21A8', skinTone: SKIN.medLight, accentColor: '#A855F7', eyeColor: '#7C3AED', accessory: 'brain' },
   intensivist:     { hairStyle: 3, hairColor: '#292524', skinTone: SKIN.dark,     accentColor: '#F97316', eyeColor: '#EA580C', accessory: 'monitor' },
   oncologist:      { hairStyle: 6, hairColor: '#9A3412', skinTone: SKIN.light,    accentColor: '#14B8A6', eyeColor: '#0D9488', accessory: 'target' },
-  psychiatrist:    { hairStyle: 4, hairColor: '#D1D5DB', skinTone: SKIN.medium,   accentColor: '#8B5CF6', eyeColor: '#6D28D9', accessory: 'book' },
+  psychiatrist:    { hairStyle: 4, hairColor: '#D1D5DB', skinTone: SKIN.medium,   accentColor: '#7C3AED', eyeColor: '#6D28D9', accessory: 'book' },
   toxicologist:    { hairStyle: 7, hairColor: '#4D7C0F', skinTone: SKIN.medLight, accentColor: '#FBBF24', eyeColor: '#A16207', accessory: 'flask' },
   palliative:      { hairStyle: 0, hairColor: '#78350F', skinTone: SKIN.medDark,  accentColor: '#F9A8D4', eyeColor: '#BE185D', accessory: 'dove' },
 };

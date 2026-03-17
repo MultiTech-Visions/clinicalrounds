@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+
+let roomMsgCounter = 0;
+function roomMsgId(prefix: string): string {
+  return `${prefix}-${Date.now()}-${++roomMsgCounter}`;
+}
+
+// Max file size: 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CouncilChat } from './CouncilChat';
@@ -114,7 +122,9 @@ export function CouncilRoom({
       });
 
     return () => {
+      // Idempotent — safe even if handleEnd already destroyed
       manager.destroy();
+      managerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -126,7 +136,7 @@ export function CouncilRoom({
     setMessages(prev => [
       ...prev,
       {
-        id: `user-${Date.now()}`,
+        id: roomMsgId('user'),
         from: 'You',
         type: 'text',
         content: text,
@@ -141,19 +151,36 @@ export function CouncilRoom({
     const manager = managerRef.current;
     if (!manager) return;
 
+    // File size guard
+    if (file.size > MAX_FILE_SIZE) {
+      setMessages(prev => [
+        ...prev,
+        {
+          id: roomMsgId('system'),
+          from: 'System',
+          type: 'system' as const,
+          content: `File too large: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB). Maximum is 10MB.`,
+          timestamp: Date.now(),
+        },
+      ]);
+      return;
+    }
+
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          const base64 = (reader.result as string).split(',')[1];
+          const dataUrl = reader.result as string;
+          if (!dataUrl || !dataUrl.includes(',')) return;
+          const base64 = dataUrl.split(',')[1];
           manager.sendImageToAll(base64, file.type);
           setMessages(prev => [
             ...prev,
             {
-              id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              id: roomMsgId('file'),
               from: 'You',
               type: 'image',
-              content: reader.result as string,
+              content: dataUrl,
               timestamp: Date.now(),
             },
           ]);
@@ -172,7 +199,7 @@ export function CouncilRoom({
           setMessages(prev => [
             ...prev,
             {
-              id: `file-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              id: roomMsgId('file'),
               from: 'You',
               type: 'file',
               content: `Shared file: ${file.name}`,
@@ -198,6 +225,7 @@ export function CouncilRoom({
 
   const handleEnd = useCallback(() => {
     managerRef.current?.destroy();
+    managerRef.current = null;
     onEnd();
   }, [onEnd]);
 

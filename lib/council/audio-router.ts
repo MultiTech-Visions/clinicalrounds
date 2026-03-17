@@ -18,9 +18,10 @@
 
 interface SessionAudioState {
   mix: MediaStreamAudioDestinationNode;
+  micGain: GainNode; // per-session mic → mix gain (so we can disconnect cleanly)
   source: MediaStreamAudioSourceNode | null;
   speakerGain: GainNode | null;
-  // All gain nodes created for cross-routing, keyed by the source session ID
+  // All gain nodes created for cross-routing, keyed by the target/source session ID
   crossGains: Map<string, GainNode>;
 }
 
@@ -30,8 +31,14 @@ export class AudioRouter {
   private micStream: MediaStream | null = null;
   private sessions: Map<string, SessionAudioState> = new Map();
   private speakerGain: GainNode | null = null;
+  private _destroyed = false;
 
   async initialize(): Promise<void> {
+    if (this.ctx) {
+      // Already initialized — avoid double-init leak
+      return;
+    }
+
     this.ctx = new AudioContext({ sampleRate: 24000 });
 
     // Master gain for speaker output
@@ -40,14 +47,24 @@ export class AudioRouter {
     this.speakerGain.connect(this.ctx.destination);
 
     // Get user microphone
-    this.micStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-      },
-    });
-    this.micSource = this.ctx.createMediaStreamSource(this.micStream);
+    try {
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      this.micSource = this.ctx.createMediaStreamSource(this.micStream);
+    } catch (err) {
+      // Clean up the AudioContext since we can't proceed without a mic
+      if (this.ctx.state !== 'closed') {
+        this.ctx.close().catch(() => {});
+      }
+      this.ctx = null;
+      this.speakerGain = null;
+      throw err;
+    }
   }
 
   get audioContext(): AudioContext | null {
@@ -65,19 +82,28 @@ export class AudioRouter {
       throw new Error('AudioRouter not initialized');
     }
 
+    // Guard against duplicate session IDs
+    if (this.sessions.has(sessionId)) {
+      this.removeSession(sessionId);
+    }
+
     // Create a destination node that will produce the mixed stream
     const mix = this.ctx.createMediaStreamDestination();
 
+    // Use a per-session gain for mic → mix so we can disconnect cleanly
+    const micGain = this.ctx.createGain();
+    micGain.gain.value = 1.0;
+    this.micSource.connect(micGain);
+    micGain.connect(mix);
+
     const state: SessionAudioState = {
       mix,
+      micGain,
       source: null,
       speakerGain: null,
       crossGains: new Map(),
     };
     this.sessions.set(sessionId, state);
-
-    // Connect user mic to this session's input
-    this.micSource.connect(mix);
 
     // Connect all EXISTING other sessions' remote audio to this new session's input
     for (const [otherId, otherState] of this.sessions) {
@@ -104,6 +130,14 @@ export class AudioRouter {
     const state = this.sessions.get(sessionId);
     if (!state) {
       throw new Error(`Session ${sessionId} not found in audio router`);
+    }
+
+    // Guard against duplicate ontrack calls — disconnect previous source if any
+    if (state.source) {
+      state.source.disconnect();
+    }
+    if (state.speakerGain) {
+      state.speakerGain.disconnect();
     }
 
     const source = this.ctx.createMediaStreamSource(remoteStream);
@@ -137,13 +171,16 @@ export class AudioRouter {
     const state = this.sessions.get(sessionId);
     if (!state) return;
 
-    // Disconnect this session's source and all its cross-gain nodes
+    // Disconnect this session's source and all its nodes
     if (state.source) {
       state.source.disconnect();
     }
     if (state.speakerGain) {
       state.speakerGain.disconnect();
     }
+    // Disconnect the per-session mic gain (prevents mic→removed mix leak)
+    state.micGain.disconnect();
+
     for (const gain of state.crossGains.values()) {
       gain.disconnect();
     }
@@ -186,11 +223,15 @@ export class AudioRouter {
     }
   }
 
-  // Tear down everything
+  // Tear down everything — idempotent
   destroy(): void {
+    if (this._destroyed) return;
+    this._destroyed = true;
+
     for (const state of this.sessions.values()) {
       state.source?.disconnect();
       state.speakerGain?.disconnect();
+      state.micGain.disconnect();
       for (const gain of state.crossGains.values()) {
         gain.disconnect();
       }
@@ -208,7 +249,7 @@ export class AudioRouter {
 
     // Close audio context
     if (this.ctx && this.ctx.state !== 'closed') {
-      this.ctx.close();
+      this.ctx.close().catch(() => {});
     }
 
     this.ctx = null;

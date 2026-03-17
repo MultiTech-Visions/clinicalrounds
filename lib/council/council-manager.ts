@@ -40,6 +40,11 @@ export class CouncilManager {
     leader: CouncilSpecialist,
     caseContext: string = ''
   ): Promise<void> {
+    // Guard against double initialization
+    if (this._isActive) {
+      throw new Error('Council is already active. Call destroy() first.');
+    }
+
     this.leader = leader;
     this.caseContext = caseContext;
     this.members = selectedSpecialists.map(getMemberInfo);
@@ -70,8 +75,14 @@ export class CouncilManager {
         }
       });
 
-      // Check we got at least 2 connected (leader + one specialist)
+      // Verify the leader specifically connected
+      const leaderIdx = selectedSpecialists.indexOf(leader);
+      const leaderConnected = leaderIdx >= 0 && results[leaderIdx].status === 'fulfilled';
       const connected = results.filter(r => r.status === 'fulfilled').length;
+
+      if (!leaderConnected) {
+        throw new Error(`Council chair (${getMemberInfo(leader).name}) failed to connect`);
+      }
       if (connected < 2) {
         throw new Error('Could not connect enough council members');
       }
@@ -127,6 +138,7 @@ export class CouncilManager {
 
   // Send a text message to all council members (from the human)
   sendTextToAll(text: string): void {
+    if (!this._isActive) return;
     for (const session of this.sessions.values()) {
       session.sendText(text);
     }
@@ -142,6 +154,7 @@ export class CouncilManager {
 
   // Send an image to all council members
   sendImageToAll(base64Image: string, mimeType?: string): void {
+    if (!this._isActive) return;
     for (const session of this.sessions.values()) {
       session.sendImage(base64Image, mimeType);
     }
@@ -181,8 +194,10 @@ export class CouncilManager {
     }
   }
 
-  // Tear down the entire council
+  // Tear down the entire council — idempotent
   destroy(): void {
+    if (!this._isActive && this.sessions.size === 0) return;
+
     for (const session of this.sessions.values()) {
       try {
         session.disconnect();

@@ -126,7 +126,7 @@ export function CouncilSetup({ onStart }: CouncilSetupProps) {
       <div className="mb-8 rounded-lg border border-border bg-muted/30 p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <label className="block text-sm font-medium">
+            <label htmlFor="council-chair-select" className="block text-sm font-medium">
               Council Chair
             </label>
             <p className="text-xs text-muted-foreground">
@@ -134,6 +134,7 @@ export function CouncilSetup({ onStart }: CouncilSetupProps) {
             </p>
           </div>
           <select
+            id="council-chair-select"
             className="rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             value={leader}
             onChange={e => {
@@ -190,9 +191,14 @@ function MemberCard({
   onSetLeader: () => void;
 }) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      aria-label={`${member.name}, ${member.title}${isLeader ? ', Council Chair' : ''}${isSelected ? ', selected' : ''}`}
       onClick={onToggle}
-      className={`group relative flex flex-col items-center rounded-lg border-2 p-3 text-center transition-all duration-150 ${
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      className={`group relative flex cursor-pointer flex-col items-center rounded-lg border-2 p-3 text-center transition-all duration-150 ${
         isSelected
           ? 'border-primary bg-primary/5 shadow-sm'
           : 'border-transparent bg-muted/40 opacity-70 hover:border-muted-foreground/30 hover:opacity-100'
@@ -231,7 +237,7 @@ function MemberCard({
         {member.title}
       </div>
 
-      {/* Make chair action */}
+      {/* Make chair action — now a proper <button> inside a <div>, not nested buttons */}
       {isSelected && !isLeader && (
         <button
           onClick={e => {
@@ -243,6 +249,6 @@ function MemberCard({
           Make chair
         </button>
       )}
-    </button>
+    </div>
   );
 }

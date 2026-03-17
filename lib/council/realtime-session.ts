@@ -13,8 +13,11 @@ export interface SessionCallbacks {
 
 let msgCounter = 0;
 function uniqueId(prefix: string): string {
-  return `${prefix}-${Date.now()}-${++msgCounter}`;
+  return `${prefix}-${Date.now()}-${++msgCounter}-${Math.random().toString(36).slice(2, 6)}`;
 }
+
+// Max image size for data channel (64KB is a safe WebRTC data channel limit)
+const MAX_IMAGE_BYTES = 64_000;
 
 // Safely send a message on the data channel, catching errors if it closes mid-send
 function safeSend(dc: RTCDataChannel | null, data: string): boolean {
@@ -110,9 +113,12 @@ export class RealtimeSession {
       }
 
       // 4. Handle remote audio (the specialist's voice)
+      // Guard: ontrack can fire multiple times; addRemoteAudio handles re-routing
       this.pc.ontrack = (event) => {
-        this.remoteStream = event.streams[0] || new MediaStream([event.track]);
-        // Register this specialist's audio output with the router
+        const stream = event.streams[0] || new MediaStream([event.track]);
+        // Only re-route if this is a genuinely new stream
+        if (this.remoteStream === stream) return;
+        this.remoteStream = stream;
         try {
           this.audioRouter.addRemoteAudio(this.member.specialist, this.remoteStream);
         } catch (err) {
@@ -202,6 +208,13 @@ export class RealtimeSession {
 
   // Send an image to this specialist
   sendImage(base64Image: string, mimeType: string = 'image/png'): void {
+    // Check approximate payload size — base64 string length ≈ byte size
+    const payloadSize = base64Image.length + 200; // 200 for JSON wrapper
+    if (payloadSize > MAX_IMAGE_BYTES) {
+      console.warn(`Image too large for data channel (${payloadSize} bytes), skipping`);
+      return;
+    }
+
     const event = {
       type: 'conversation.item.create',
       item: {
@@ -245,7 +258,7 @@ export class RealtimeSession {
   private handleEvent(event: Record<string, unknown>): void {
     switch (event.type) {
       case 'response.audio_transcript.delta': {
-        const delta = event.delta as string;
+        const delta = typeof event.delta === 'string' ? event.delta : '';
         if (delta) {
           this.callbacks.onTranscript(this.member.specialist, delta, false);
         }
@@ -253,7 +266,7 @@ export class RealtimeSession {
       }
 
       case 'response.audio_transcript.done': {
-        const transcript = event.transcript as string;
+        const transcript = typeof event.transcript === 'string' ? event.transcript : '';
         if (transcript) {
           this.callbacks.onTranscript(this.member.specialist, transcript, true);
         }
@@ -283,16 +296,20 @@ export class RealtimeSession {
       }
 
       case 'response.function_call_arguments.done': {
-        this.handleToolCall(
-          event.call_id as string,
-          event.name as string,
-          event.arguments as string
-        );
+        const callId = typeof event.call_id === 'string' ? event.call_id : '';
+        const name = typeof event.name === 'string' ? event.name : '';
+        const args = typeof event.arguments === 'string' ? event.arguments : '{}';
+        if (callId && name) {
+          this.handleToolCall(callId, name, args);
+        }
         break;
       }
 
       case 'error': {
-        const errMsg = (event.error as Record<string, string>)?.message || 'Unknown error';
+        const errObj = event.error;
+        const errMsg = (typeof errObj === 'object' && errObj !== null && typeof (errObj as Record<string, unknown>).message === 'string')
+          ? (errObj as Record<string, string>).message
+          : 'Unknown error';
         this.callbacks.onError(this.member.specialist, errMsg);
         break;
       }

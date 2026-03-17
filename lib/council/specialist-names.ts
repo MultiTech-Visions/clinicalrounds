@@ -89,7 +89,7 @@ const COUNCIL_MEMBERS: Record<CouncilSpecialist, Omit<CouncilMemberInfo, 'specia
     name: 'Sage',
     title: 'Psychiatrist',
     voice: 'sage',       // 2/2 sage (paired w/ hepatology — rarely overlap)
-    color: '#8B5CF6',    // purple - wisdom
+    color: '#7C3AED',    // darker violet - wisdom (distinct from attending purple)
   },
   toxicologist: {
     name: 'Vex',
@@ -106,7 +106,12 @@ const COUNCIL_MEMBERS: Record<CouncilSpecialist, Omit<CouncilMemberInfo, 'specia
 };
 
 export function getMemberInfo(specialist: CouncilSpecialist): CouncilMemberInfo {
-  return { specialist, ...COUNCIL_MEMBERS[specialist] };
+  const data = COUNCIL_MEMBERS[specialist];
+  if (!data) {
+    // Defensive fallback for unknown specialists (should not happen with valid types)
+    return { specialist, name: specialist, title: 'Specialist', voice: 'ash', color: '#6B7280' };
+  }
+  return { specialist, ...data };
 }
 
 export function getAllMembers(): CouncilMemberInfo[] {

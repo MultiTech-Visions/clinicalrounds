@@ -1,9 +1,8 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ChatMessage, CouncilSpecialist } from '@/lib/council/types';
 import { getMemberInfo } from '@/lib/council/specialist-names';
 
@@ -26,10 +25,20 @@ export function CouncilChat({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState('');
+  const [isComposing, setIsComposing] = useState(false);
+  const userScrolledUp = useRef(false);
 
-  // Auto-scroll to bottom on new messages
+  // Track if user has scrolled away from bottom
+  const handleScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 80;
+    userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > threshold;
+  }, []);
+
+  // Auto-scroll to bottom only if user hasn't scrolled up
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!userScrolledUp.current && scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, transcripts]);
@@ -67,7 +76,7 @@ export function CouncilChat({
       </div>
 
       {/* Messages area */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
+      <div className="flex-1 overflow-y-auto" ref={scrollRef} onScroll={handleScroll}>
         {!hasContent ? (
           /* Empty state */
           <div className="flex h-full flex-col items-center justify-center p-8 text-center">
@@ -115,7 +124,7 @@ export function CouncilChat({
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Input area */}
       <div className="border-t border-border p-3">
@@ -125,7 +134,14 @@ export function CouncilChat({
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              onCompositionStart={() => setIsComposing(true)}
+              onCompositionEnd={() => setIsComposing(false)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Message the council..."
               className="pr-16"
             />
@@ -249,8 +265,9 @@ const ALLOWED_TAGS = new Set([
   'a', 'img',
 ]);
 
+// No style or class on global — both are XSS/layout-manipulation vectors.
+// Style allows CSS injection; class allows hijacking app styles for overlays.
 const ALLOWED_ATTRS: Record<string, Set<string>> = {
-  '*': new Set(['class', 'style']),
   a: new Set(['href', 'title', 'target', 'rel']),
   img: new Set(['src', 'alt', 'width', 'height']),
   td: new Set(['colspan', 'rowspan']),
@@ -297,32 +314,28 @@ function sanitizeNode(source: Node, target: Node): void {
 
     const cleanEl = document.createElement(tag);
 
-    // Only copy allowed attributes
-    const globalAllowed = ALLOWED_ATTRS['*'] || new Set();
-    const tagAllowed = ALLOWED_ATTRS[tag] || new Set();
+    // Only copy allowed attributes for this tag
+    const tagAllowed = ALLOWED_ATTRS[tag];
+    if (!tagAllowed) {
+      // Tag has no allowed attributes — skip attribute copying
+    } else {
+      for (const attr of Array.from(el.attributes)) {
+        const name = attr.name.toLowerCase();
+        if (!tagAllowed.has(name)) continue;
 
-    for (const attr of Array.from(el.attributes)) {
-      const name = attr.name.toLowerCase();
-      if (!globalAllowed.has(name) && !tagAllowed.has(name)) continue;
+        const val = attr.value;
+        if (name === 'href' || name === 'src') {
+          // Only allow http(s) and data:image (but NOT svg+xml which can contain scripts)
+          if (!/^(https?:|data:image\/(?!svg)[a-z]+[,;]|#)/i.test(val)) continue;
+        }
+        if (name === 'target') {
+          cleanEl.setAttribute(name, '_blank');
+          cleanEl.setAttribute('rel', 'noopener noreferrer');
+          continue;
+        }
 
-      // Block dangerous attribute values
-      const val = attr.value;
-      if (name === 'href' || name === 'src') {
-        // Only allow http(s) and data: URIs
-        if (!/^(https?:|data:image\/|#|\/)/i.test(val)) continue;
+        cleanEl.setAttribute(name, val);
       }
-      if (name === 'style') {
-        // Strip any url(), expression(), or javascript: from style values
-        if (/url\s*\(|expression\s*\(|javascript:/i.test(val)) continue;
-      }
-      if (name === 'target') {
-        // Only allow _blank
-        cleanEl.setAttribute(name, '_blank');
-        cleanEl.setAttribute('rel', 'noopener noreferrer');
-        continue;
-      }
-
-      cleanEl.setAttribute(name, val);
     }
 
     // Force rel on links
