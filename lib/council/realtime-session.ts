@@ -104,6 +104,14 @@ export class RealtimeSession {
       // 2. Create RTCPeerConnection
       this.pc = new RTCPeerConnection();
 
+      // Monitor connection state — register early so we don't miss fast transitions
+      this.pc.onconnectionstatechange = () => {
+        const state = this.pc?.connectionState;
+        if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+          this.setStatus('disconnected');
+        }
+      };
+
       // 3. Get the mixed audio input for this session from the audio router
       const inputStream = this.audioRouter.createSessionInput(this.member.specialist);
       this.audioRouterInitialized = true;
@@ -165,14 +173,6 @@ export class RealtimeSession {
         type: 'answer',
         sdp: answerSdp,
       });
-
-      // Monitor connection state
-      this.pc.onconnectionstatechange = () => {
-        const state = this.pc?.connectionState;
-        if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-          this.setStatus('disconnected');
-        }
-      };
 
     } catch (error) {
       // Clean up audio router if we initialized it
