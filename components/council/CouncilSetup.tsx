@@ -174,7 +174,7 @@ function MemberCard({
         <PixelAvatar
           specialist={member.specialist}
           status={isSelected ? 'connected' : 'idle'}
-          size={3}
+          size={2}
         />
       </div>
 

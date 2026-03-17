@@ -97,7 +97,7 @@ export function CouncilTable({
                 <PixelAvatar
                   specialist={m.specialist}
                   status={m.status}
-                  size={2}
+                  size={1}
                   className="transition-transform group-hover:scale-110"
                 />
 

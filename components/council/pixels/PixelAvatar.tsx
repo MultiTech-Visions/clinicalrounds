@@ -7,14 +7,14 @@ import { drawAvatar, SPRITE_W, SPRITE_H } from './draw-avatar';
 interface PixelAvatarProps {
   specialist: CouncilSpecialist;
   status: MemberConnectionStatus;
-  size?: number; // display size multiplier (default 4 = 64x80px)
+  size?: number; // display size multiplier (default 2 = 64x80px)
   className?: string;
 }
 
 export function PixelAvatar({
   specialist,
   status,
-  size = 4,
+  size = 2,
   className = '',
 }: PixelAvatarProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);

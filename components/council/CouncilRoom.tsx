@@ -345,7 +345,7 @@ function MemberTile({
     >
       {/* Pixel avatar */}
       <div className="relative shrink-0">
-        <PixelAvatar specialist={specialist} status={status} size={2} />
+        <PixelAvatar specialist={specialist} status={status} size={1.5} />
         {status === 'speaking' && (
           <div
             className="absolute inset-0 animate-ping rounded opacity-20"
