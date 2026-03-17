@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { AnalyticsProvider } from '@/components/AnalyticsProvider';
 import { Disclaimer } from '@/components/Disclaimer';
+import { ShutdownButton } from '@/components/ShutdownButton';
 import './globals.css';
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Disclaimer />
           </footer>
         </div>
+        <ShutdownButton />
         <AnalyticsProvider />
       </body>
     </html>
