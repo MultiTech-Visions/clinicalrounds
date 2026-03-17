@@ -324,9 +324,13 @@ function sanitizeNode(source: Node, target: Node): void {
         if (!tagAllowed.has(name)) continue;
 
         const val = attr.value;
-        if (name === 'href' || name === 'src') {
-          // Only allow http(s) and data:image (but NOT svg+xml which can contain scripts)
-          if (!/^(https?:|data:image\/(?!svg)[a-z]+[,;]|#)/i.test(val)) continue;
+        if (name === 'href') {
+          // Only allow https URLs and anchor links — block relative, protocol-relative, javascript:
+          if (!/^(https?:|#)/i.test(val)) continue;
+        }
+        if (name === 'src') {
+          // Only allow https and safe data:image (NOT svg+xml which can contain scripts)
+          if (!/^(https?:|data:image\/(?!svg)[a-z]+[,;])/i.test(val)) continue;
         }
         if (name === 'target') {
           cleanEl.setAttribute(name, '_blank');

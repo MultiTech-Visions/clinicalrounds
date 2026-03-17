@@ -53,6 +53,7 @@ export function PixelAvatar({
       width={SPRITE_W}
       height={SPRITE_H}
       className={className}
+      aria-hidden="true"
       style={{
         width: SPRITE_W * size,
         height: SPRITE_H * size,
