@@ -12,6 +12,7 @@ interface CouncilChatProps {
   transcripts: Map<string, string>;
   onSendText: (text: string) => void;
   onSendFile: (file: File) => void;
+  memberCount?: number;
 }
 
 export function CouncilChat({
@@ -19,9 +20,11 @@ export function CouncilChat({
   transcripts,
   onSendText,
   onSendFile,
+  memberCount,
 }: CouncilChatProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState('');
 
   // Auto-scroll to bottom on new messages
@@ -36,6 +39,7 @@ export function CouncilChat({
     if (!text) return;
     onSendText(text);
     setInput('');
+    inputRef.current?.focus();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -46,58 +50,92 @@ export function CouncilChat({
     e.target.value = '';
   };
 
+  const hasContent = messages.length > 0 || transcripts.size > 0;
+
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-background">
+    <div className="flex h-full flex-col bg-background">
       {/* Header */}
-      <div className="border-b border-border px-4 py-2">
-        <h3 className="text-sm font-semibold">Council Chat</h3>
-        <p className="text-xs text-muted-foreground">
-          Shared viewport - text, files, and specialist data
-        </p>
+      <div className="border-b border-border px-4 py-2.5">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold">Council Chat</h3>
+          {messages.length > 0 && (
+            <span className="text-[10px] tabular-nums text-muted-foreground">
+              {messages.length} messages
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-        <div className="space-y-3">
-          {messages.map(msg => (
-            <MessageBubble key={msg.id} message={msg} />
-          ))}
+      {/* Messages area */}
+      <ScrollArea className="flex-1" ref={scrollRef}>
+        {!hasContent ? (
+          /* Empty state */
+          <div className="flex h-full flex-col items-center justify-center p-8 text-center">
+            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+            </div>
+            <p className="text-sm font-medium text-muted-foreground">
+              Council session starting
+            </p>
+            <p className="mt-1 max-w-xs text-xs text-muted-foreground/70">
+              {memberCount
+                ? `${memberCount} specialists are joining. Conversation will appear here as they speak.`
+                : 'Specialists are joining. Conversation will appear here.'}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3 p-4">
+            {messages.map(msg => (
+              <MessageBubble key={msg.id} message={msg} />
+            ))}
 
-          {/* Live transcripts (partial, non-final) */}
-          {Array.from(transcripts.entries()).map(([specialist, text]) => {
-            if (!text) return null;
-            const info = getMemberInfo(specialist as CouncilSpecialist);
-            return (
-              <div
-                key={`transcript-${specialist}`}
-                className="flex gap-2 opacity-60"
-              >
+            {/* Live transcripts (partial, non-final) */}
+            {Array.from(transcripts.entries()).map(([specialist, text]) => {
+              if (!text) return null;
+              const info = getMemberInfo(specialist as CouncilSpecialist);
+              return (
                 <div
-                  className="mt-1 h-2 w-2 shrink-0 animate-pulse rounded-full"
-                  style={{ backgroundColor: info.color }}
-                />
-                <div className="text-xs italic text-muted-foreground">
-                  <span className="font-medium" style={{ color: info.color }}>
-                    {info.name}
-                  </span>
-                  : {text}
+                  key={`transcript-${specialist}`}
+                  className="flex items-start gap-2 rounded-md bg-muted/30 px-3 py-2"
+                >
+                  <div
+                    className="mt-0.5 h-2.5 w-2.5 shrink-0 animate-pulse rounded-full"
+                    style={{ backgroundColor: info.color }}
+                  />
+                  <div className="min-w-0 text-xs text-muted-foreground">
+                    <span className="font-semibold" style={{ color: info.color }}>
+                      {info.name}
+                    </span>
+                    <span className="ml-1 italic">{text}</span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </ScrollArea>
 
       {/* Input area */}
       <div className="border-t border-border p-3">
-        <div className="flex gap-2">
-          <Input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
-            placeholder="Type a message to the council..."
-            className="flex-1"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
+              placeholder="Message the council..."
+              className="pr-16"
+            />
+            {!input && (
+              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground/50">
+                Enter to send
+              </span>
+            )}
+          </div>
+
           <input
             ref={fileInputRef}
             type="file"
@@ -106,10 +144,11 @@ export function CouncilChat({
             onChange={handleFileChange}
           />
           <Button
-            variant="outline"
+            variant="ghost"
             size="icon"
             onClick={() => fileInputRef.current?.click()}
             title="Attach file"
+            className="shrink-0 text-muted-foreground hover:text-foreground"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -125,8 +164,16 @@ export function CouncilChat({
               <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
             </svg>
           </Button>
-          <Button onClick={handleSend} disabled={!input.trim()}>
-            Send
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            size="icon"
+            className="shrink-0"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m22 2-7 20-4-9-9-4Z" />
+              <path d="M22 2 11 13" />
+            </svg>
           </Button>
         </div>
       </div>
@@ -147,8 +194,8 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   if (isSystem) {
     return (
-      <div className="flex justify-center">
-        <div className="rounded-full bg-muted px-3 py-1 text-xs text-muted-foreground">
+      <div className="flex justify-center py-1">
+        <div className="rounded-full bg-muted px-3 py-1 text-[11px] text-muted-foreground">
           {message.content}
         </div>
       </div>
@@ -157,13 +204,18 @@ function MessageBubble({ message }: { message: ChatMessage }) {
 
   return (
     <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}>
-      {/* Sender name */}
-      <span
-        className="mb-0.5 text-xs font-medium"
-        style={color ? { color } : undefined}
-      >
-        {message.from}
-      </span>
+      {/* Sender name with timestamp */}
+      <div className="mb-0.5 flex items-baseline gap-2">
+        <span
+          className="text-xs font-semibold"
+          style={color ? { color } : undefined}
+        >
+          {message.from}
+        </span>
+        <span className="text-[10px] text-muted-foreground/60">
+          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </span>
+      </div>
 
       {/* Content */}
       <div
@@ -172,6 +224,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             ? 'bg-primary text-primary-foreground'
             : 'border border-border bg-card'
         }`}
+        style={!isUser && color ? { borderLeftColor: color, borderLeftWidth: '3px' } : undefined}
       >
         {isHtml ? (
           <div
@@ -182,11 +235,6 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <p className="whitespace-pre-wrap">{message.content}</p>
         )}
       </div>
-
-      {/* Timestamp */}
-      <span className="mt-0.5 text-[10px] text-muted-foreground">
-        {new Date(message.timestamp).toLocaleTimeString()}
-      </span>
     </div>
   );
 }

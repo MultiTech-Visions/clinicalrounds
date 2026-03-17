@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CouncilChat } from './CouncilChat';
@@ -41,6 +41,17 @@ export function CouncilRoom({
   const [micMuted, setMicMuted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMemberPanel, setShowMemberPanel] = useState(true);
+
+  // Connection summary
+  const connectionSummary = useMemo(() => {
+    const connected = members.filter(m =>
+      m.status === 'connected' || m.status === 'speaking' || m.status === 'listening' || m.status === 'hand_raised'
+    ).length;
+    const errors = members.filter(m => m.status === 'error' || m.status === 'disconnected').length;
+    const speaking = members.filter(m => m.status === 'speaking').length;
+    return { connected, errors, speaking, total: members.length };
+  }, [members]);
 
   // Initialize the council on mount
   useEffect(() => {
@@ -57,7 +68,6 @@ export function CouncilRoom({
       },
       onTranscript: (specialist, text, isFinal) => {
         if (isFinal) {
-          // Move final transcript to chat messages
           const info = getMemberInfo(specialist);
           setMessages(prev => [
             ...prev,
@@ -70,14 +80,12 @@ export function CouncilRoom({
               timestamp: Date.now(),
             },
           ]);
-          // Clear partial transcript
           setTranscripts(prev => {
             const next = new Map(prev);
             next.delete(specialist);
             return next;
           });
         } else {
-          // Update partial transcript — deltas are appended to build up the current utterance
           setTranscripts(prev => {
             const next = new Map(prev);
             next.set(specialist, (prev.get(specialist) || '') + text);
@@ -115,7 +123,6 @@ export function CouncilRoom({
     const manager = managerRef.current;
     if (!manager) return;
 
-    // Add to chat as user message
     setMessages(prev => [
       ...prev,
       {
@@ -134,7 +141,6 @@ export function CouncilRoom({
     const manager = managerRef.current;
     if (!manager) return;
 
-    // For images, convert to base64 and send
     if (file.type.startsWith('image/')) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -158,7 +164,6 @@ export function CouncilRoom({
       reader.onerror = () => console.error('Failed to read file:', file.name);
       reader.readAsDataURL(file);
     } else {
-      // For text files, read and send as text
       const reader = new FileReader();
       reader.onload = () => {
         try {
@@ -196,6 +201,7 @@ export function CouncilRoom({
     onEnd();
   }, [onEnd]);
 
+  // Error state
   if (error) {
     return (
       <div className="mx-auto flex max-w-lg flex-col items-center gap-4 px-4 py-16 text-center">
@@ -216,7 +222,7 @@ export function CouncilRoom({
           </svg>
         </div>
         <h2 className="text-xl font-bold">Connection Failed</h2>
-        <p className="text-muted-foreground">{error}</p>
+        <p className="text-sm text-muted-foreground">{error}</p>
         <Button variant="outline" onClick={onEnd}>
           Back to Setup
         </Button>
@@ -225,53 +231,94 @@ export function CouncilRoom({
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] flex-col gap-4 p-4">
+    <div className="flex h-[calc(100vh-4rem)] flex-col">
       {/* Top bar */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold">
-            Voice Council{' '}
-            {isConnecting && (
-              <span className="text-sm font-normal text-muted-foreground">
-                Connecting...
-              </span>
-            )}
-          </h2>
+      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-bold">Voice Council</h2>
+
+          {/* Connection status pills */}
+          {isConnecting ? (
+            <Badge variant="outline" className="animate-pulse gap-1 text-xs">
+              <span className="inline-block h-1.5 w-1.5 animate-spin rounded-full border border-current border-t-transparent" />
+              Connecting {connectionSummary.connected}/{connectionSummary.total}
+            </Badge>
+          ) : (
+            <div className="flex items-center gap-1.5">
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                {connectionSummary.connected} online
+              </Badge>
+              {connectionSummary.speaking > 0 && (
+                <Badge variant="default" className="gap-1 text-xs">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-300" />
+                  {connectionSummary.speaking} speaking
+                </Badge>
+              )}
+              {connectionSummary.errors > 0 && (
+                <Badge variant="destructive" className="gap-1 text-xs">
+                  {connectionSummary.errors} failed
+                </Badge>
+              )}
+            </div>
+          )}
         </div>
+
         <div className="flex items-center gap-2">
+          {/* Toggle member panel (useful on smaller screens) */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowMemberPanel(p => !p)}
+            className="lg:hidden"
+            title={showMemberPanel ? 'Hide members' : 'Show members'}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+          </Button>
+
           <Button
             variant={micMuted ? 'destructive' : 'outline'}
             size="sm"
             onClick={toggleMic}
+            className="gap-1.5"
           >
-            {micMuted ? (
-              <>
-                <MicOffIcon /> Unmute
-              </>
-            ) : (
-              <>
-                <MicIcon /> Mute
-              </>
-            )}
+            {micMuted ? <MicOffIcon /> : <MicIcon />}
+            <span className="hidden sm:inline">{micMuted ? 'Unmute' : 'Mute'}</span>
           </Button>
-          <Button variant="destructive" size="sm" onClick={handleEnd}>
-            End Session
+
+          <Button variant="destructive" size="sm" onClick={handleEnd} className="gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+            <span className="hidden sm:inline">End Session</span>
           </Button>
         </div>
       </div>
 
-      {/* Main content: pixel scene + members + chat */}
-      <div className="flex flex-1 gap-4 overflow-hidden">
-        {/* Left panel: pixel council room + member list */}
-        <div className="w-80 shrink-0 space-y-3 overflow-y-auto">
+      {/* Main content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left panel: pixel council scene + member list */}
+        <div
+          className={`${
+            showMemberPanel ? 'flex' : 'hidden lg:flex'
+          } w-72 shrink-0 flex-col border-r border-border lg:w-80`}
+        >
           {/* Pixel art council scene */}
-          <CouncilTable
-            members={members}
-            leader={leader}
-          />
+          <div className="border-b border-border p-3">
+            <CouncilTable members={members} leader={leader} />
+          </div>
 
-          {/* Member list with pixel avatars */}
-          <div className="space-y-1.5">
+          {/* Member list */}
+          <div className="flex items-center justify-between px-3 pt-3 pb-1">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Members</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{members.length}</span>
+          </div>
+          <div className="flex-1 space-y-1 overflow-y-auto px-2 pb-2">
             {members.map(m => {
               const info = getMemberInfo(m.specialist);
               return (
@@ -290,12 +337,13 @@ export function CouncilRoom({
         </div>
 
         {/* Chat viewport */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <CouncilChat
             messages={messages}
             transcripts={transcripts}
             onSendText={handleSendText}
             onSendFile={handleSendFile}
+            memberCount={members.length}
           />
         </div>
       </div>
@@ -318,55 +366,51 @@ function MemberTile({
   status: MemberConnectionStatus;
   isLeader: boolean;
 }) {
-  const statusConfig: Record<MemberConnectionStatus, { label: string; variant: 'default' | 'secondary' | 'outline' | 'destructive' }> = {
-    idle: { label: 'Idle', variant: 'secondary' },
-    connecting: { label: 'Connecting...', variant: 'outline' },
-    connected: { label: 'Connected', variant: 'default' },
-    speaking: { label: 'Speaking', variant: 'default' },
-    listening: { label: 'Listening', variant: 'secondary' },
-    hand_raised: { label: 'Hand Raised', variant: 'outline' },
-    disconnected: { label: 'Disconnected', variant: 'destructive' },
-    error: { label: 'Error', variant: 'destructive' },
+  const statusConfig: Record<MemberConnectionStatus, { label: string; dot: string }> = {
+    idle: { label: 'Idle', dot: 'bg-gray-400' },
+    connecting: { label: 'Connecting', dot: 'bg-blue-400 animate-pulse' },
+    connected: { label: 'Ready', dot: 'bg-green-500' },
+    speaking: { label: 'Speaking', dot: 'bg-green-400 animate-pulse' },
+    listening: { label: 'Listening', dot: 'bg-emerald-500' },
+    hand_raised: { label: 'Hand Raised', dot: 'bg-yellow-400 animate-bounce' },
+    disconnected: { label: 'Offline', dot: 'bg-red-500' },
+    error: { label: 'Error', dot: 'bg-red-500' },
   };
 
-  const { label, variant } = statusConfig[status];
+  const { label, dot } = statusConfig[status];
 
   return (
     <div
-      className="flex items-center gap-2 rounded-lg border border-border p-2 transition-all"
-      style={{
-        borderLeftColor: color,
-        borderLeftWidth: '3px',
-        backgroundColor:
-          status === 'speaking'
-            ? `${color}10`
-            : undefined,
-      }}
+      className={`flex items-center gap-2.5 rounded-lg p-2 transition-all duration-200 ${
+        status === 'speaking'
+          ? 'bg-primary/5 ring-1 ring-primary/20'
+          : status === 'hand_raised'
+            ? 'bg-yellow-500/5 ring-1 ring-yellow-500/20'
+            : 'hover:bg-muted/50'
+      }`}
+      style={{ borderLeft: `3px solid ${color}` }}
     >
       {/* Pixel avatar */}
       <div className="relative shrink-0">
         <PixelAvatar specialist={specialist} status={status} size={1.5} />
-        {status === 'speaking' && (
-          <div
-            className="absolute inset-0 animate-ping rounded opacity-20"
-            style={{ backgroundColor: color }}
-          />
-        )}
       </div>
 
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1">
-          <span className="text-xs font-semibold truncate">{name}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="truncate text-xs font-semibold">{name}</span>
           {isLeader && (
-            <span className="text-[9px] font-bold text-muted-foreground">
+            <span className="shrink-0 rounded bg-muted px-1 py-px text-[9px] font-bold text-muted-foreground">
               CHAIR
             </span>
           )}
         </div>
-        <div className="text-[9px] text-muted-foreground truncate">{title}</div>
-        <Badge variant={variant} className="mt-0.5 text-[9px] px-1 py-0">
-          {label}
-        </Badge>
+        <div className="truncate text-[10px] text-muted-foreground">{title}</div>
+      </div>
+
+      {/* Status dot + label */}
+      <div className="flex shrink-0 items-center gap-1">
+        <span className={`h-2 w-2 rounded-full ${dot}`} />
+        <span className="hidden text-[10px] text-muted-foreground xl:inline">{label}</span>
       </div>
     </div>
   );

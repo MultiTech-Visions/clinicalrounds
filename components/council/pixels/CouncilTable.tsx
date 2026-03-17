@@ -77,6 +77,8 @@ export function CouncilTable({
           const info = getMemberInfo(m.specialist);
           const pos = positions[i] || { x: 50, y: 50 };
           const isLeader = m.specialist === leader;
+          const isSpeaking = m.status === 'speaking';
+          const isHandRaised = m.status === 'hand_raised';
 
           return (
             <div
@@ -93,19 +95,24 @@ export function CouncilTable({
                 className="group relative"
                 title={`${info.name} — ${info.title}`}
               >
-                {/* Avatar */}
-                <PixelAvatar
-                  specialist={m.specialist}
-                  status={m.status}
-                  size={1}
-                  className="transition-transform group-hover:scale-110"
-                />
+                {/* Avatar with glow effect for speaking */}
+                <div
+                  className={`transition-transform duration-200 group-hover:scale-110 ${
+                    isSpeaking ? 'drop-shadow-[0_0_4px_rgba(34,197,94,0.5)]' : ''
+                  } ${isHandRaised ? 'drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]' : ''}`}
+                >
+                  <PixelAvatar
+                    specialist={m.specialist}
+                    status={m.status}
+                    size={1}
+                  />
+                </div>
 
                 {/* Name label */}
                 <div
-                  className="mt-0.5 rounded-sm px-1 text-center text-[8px] font-bold leading-tight"
+                  className="mt-0.5 rounded-sm px-1.5 text-center text-[9px] font-bold leading-tight shadow-sm"
                   style={{
-                    backgroundColor: `${info.color}CC`,
+                    backgroundColor: `${info.color}DD`,
                     color: '#FFFFFF',
                     textShadow: '0 1px 0 rgba(0,0,0,0.5)',
                   }}
@@ -116,7 +123,7 @@ export function CouncilTable({
 
                 {/* Status indicator dot */}
                 <div
-                  className={`absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-black/30 ${
+                  className={`absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full border border-black/20 shadow-sm ${
                     m.status === 'speaking'
                       ? 'animate-pulse bg-green-400'
                       : m.status === 'hand_raised'
@@ -147,7 +154,6 @@ function getPositions(count: number): Array<{ x: number; y: number }> {
   const positions: Array<{ x: number; y: number }> = [];
 
   // Arrange in an arc from left to right
-  // Top row: specialists sit behind the table
   for (let i = 0; i < count; i++) {
     const t = count === 1 ? 0.5 : i / (count - 1);
     const x = 10 + t * 80; // 10% to 90% horizontal
