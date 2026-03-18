@@ -907,7 +907,7 @@ class CouncilManager {
 
     for (const [key, member] of Object.entries(COUNCIL_MEMBERS)) {
       const card = document.createElement('div');
-      card.className = 'specialist-card';
+      card.className = 'council-card';
       card.dataset.specialist = key;
 
       card.innerHTML = `
@@ -965,14 +965,14 @@ class CouncilManager {
 
   btnSelectAll.addEventListener('click', () => {
     selectedSpecialists = new Set(Object.keys(COUNCIL_MEMBERS));
-    document.querySelectorAll('.specialist-card').forEach(c => c.classList.add('selected'));
+    document.querySelectorAll('.council-card').forEach(c => c.classList.add('selected'));
     updateChairDropdown();
     updateStartButton();
   });
 
   btnClear.addEventListener('click', () => {
     selectedSpecialists.clear();
-    document.querySelectorAll('.specialist-card').forEach(c => c.classList.remove('selected'));
+    document.querySelectorAll('.council-card').forEach(c => c.classList.remove('selected'));
     updateChairDropdown();
     updateStartButton();
   });

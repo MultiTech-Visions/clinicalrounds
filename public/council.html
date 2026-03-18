@@ -4,33 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Voice Council — ClinicalRounds</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── Council-specific styles (light theme) ── */
 
-    :root {
-      --bg: #0f172a;
-      --surface: #1e293b;
-      --surface2: #334155;
-      --border: #475569;
-      --text: #f1f5f9;
-      --text-muted: #94a3b8;
-      --accent: #3b82f6;
-      --accent-hover: #2563eb;
-      --danger: #ef4444;
-      --success: #22c55e;
-      --warning: #f59e0b;
-      --radius: 8px;
-    }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-
-    a { color: var(--accent); text-decoration: none; }
+    a { color: var(--primary); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     button {
@@ -54,18 +32,18 @@
       align-items: center;
       gap: 1rem;
       padding: 1rem 1.5rem;
-      background: var(--surface);
+      background: var(--card);
       border-bottom: 1px solid var(--border);
     }
 
-    .header .back-link { font-size: 0.875rem; }
+    .header .back-link { font-size: 0.875rem; color: var(--primary); }
     .header h1 { font-size: 1.25rem; font-weight: 600; }
 
     /* ── DISCLAIMER ── */
-    .disclaimer {
-      background: #451a03;
-      border: 1px solid #92400e;
-      color: #fbbf24;
+    .council-disclaimer {
+      background: var(--amber-50);
+      border-bottom: 1px solid var(--amber-200);
+      color: var(--amber-600);
       padding: 0.5rem 1rem;
       font-size: 0.75rem;
       text-align: center;
@@ -83,7 +61,7 @@
       font-size: 1rem;
       font-weight: 600;
       margin-bottom: 0.75rem;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
@@ -91,16 +69,16 @@
     textarea {
       width: 100%;
       min-height: 120px;
-      background: var(--surface);
+      background: var(--background);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      color: var(--text);
+      color: var(--foreground);
       padding: 0.75rem;
       font-family: inherit;
       font-size: 0.875rem;
       resize: vertical;
     }
-    textarea:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 2px rgba(67,97,238,0.2); }
 
     /* Specialist grid */
     .grid-actions {
@@ -110,22 +88,24 @@
     }
 
     .grid-actions button {
-      background: var(--surface2);
-      color: var(--text);
+      background: var(--secondary);
+      color: var(--foreground);
       font-size: 0.75rem;
       padding: 0.375rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
     }
-    .grid-actions button:hover { background: var(--border); }
+    .grid-actions button:hover { background: var(--muted); }
 
-    .specialist-grid {
+    .council-specialist-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 0.75rem;
     }
 
-    .specialist-card {
+    .council-card {
       position: relative;
-      background: var(--surface);
+      background: var(--card);
       border: 2px solid var(--border);
       border-radius: var(--radius);
       padding: 0.75rem;
@@ -134,14 +114,14 @@
       user-select: none;
     }
 
-    .specialist-card:hover { border-color: var(--text-muted); }
+    .council-card:hover { border-color: var(--muted-foreground); }
 
-    .specialist-card.selected {
-      border-color: var(--accent);
-      background: rgba(59, 130, 246, 0.1);
+    .council-card.selected {
+      border-color: var(--primary);
+      background: rgba(67, 97, 238, 0.05);
     }
 
-    .specialist-card .color-dot {
+    .council-card .color-dot {
       width: 10px;
       height: 10px;
       border-radius: 50%;
@@ -150,25 +130,25 @@
       vertical-align: middle;
     }
 
-    .specialist-card .card-name {
+    .council-card .card-name {
       font-weight: 600;
       font-size: 0.875rem;
     }
 
-    .specialist-card .card-title {
+    .council-card .card-title {
       font-size: 0.75rem;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
       margin-top: 0.25rem;
     }
 
-    .specialist-card .checkmark {
+    .council-card .checkmark {
       position: absolute;
       top: 0.5rem;
       right: 0.5rem;
       width: 20px;
       height: 20px;
       border-radius: 50%;
-      background: var(--accent);
+      background: var(--primary);
       display: none;
       align-items: center;
       justify-content: center;
@@ -176,7 +156,7 @@
       color: #fff;
     }
 
-    .specialist-card.selected .checkmark { display: flex; }
+    .council-card.selected .checkmark { display: flex; }
 
     /* Config row */
     .config-row {
@@ -188,31 +168,33 @@
 
     .config-row label {
       font-size: 0.875rem;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
     }
 
     select {
-      background: var(--surface);
+      background: var(--background);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      color: var(--text);
+      color: var(--foreground);
       padding: 0.5rem 0.75rem;
       font-family: inherit;
       font-size: 0.875rem;
     }
 
     .btn-primary {
-      background: var(--accent);
-      color: #fff;
+      background: var(--primary);
+      color: var(--primary-foreground);
       padding: 0.75rem 2rem;
       font-size: 1rem;
       font-weight: 600;
+      border-radius: var(--radius);
     }
-    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:hover:not(:disabled) { background: #3b50d9; }
 
     .btn-danger {
-      background: var(--danger);
-      color: #fff;
+      background: var(--destructive);
+      color: var(--destructive-foreground);
+      border-radius: var(--radius);
     }
     .btn-danger:hover { background: #dc2626; }
 
@@ -226,7 +208,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 0.5rem 1rem;
-      background: var(--surface);
+      background: var(--card);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
@@ -248,14 +230,14 @@
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background: var(--success);
+      background: #10b981;
     }
 
     .top-bar .controls { display: flex; gap: 0.5rem; }
 
     .btn-icon {
-      background: var(--surface2);
-      color: var(--text);
+      background: var(--secondary);
+      color: var(--foreground);
       width: 36px;
       height: 36px;
       display: flex;
@@ -264,10 +246,11 @@
       border-radius: 50%;
       padding: 0;
       font-size: 1.1rem;
+      border: 1px solid var(--border);
     }
-    .btn-icon:hover { background: var(--border); }
-    .btn-icon.active { background: var(--accent); }
-    .btn-icon.muted { background: var(--danger); }
+    .btn-icon:hover { background: var(--muted); }
+    .btn-icon.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn-icon.muted { background: var(--destructive); color: #fff; border-color: var(--destructive); }
 
     /* Main layout */
     .room-layout {
@@ -279,7 +262,7 @@
     /* Member sidebar */
     .member-sidebar {
       width: 220px;
-      background: var(--surface);
+      background: var(--card);
       border-right: 1px solid var(--border);
       overflow-y: auto;
       flex-shrink: 0;
@@ -290,7 +273,7 @@
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
       margin-bottom: 0.75rem;
     }
 
@@ -314,15 +297,15 @@
 
     /* Status indicators */
     .indicator.connecting {
-      background: var(--warning);
+      background: #f59e0b;
       animation: pulse 1.2s ease-in-out infinite;
     }
-    .indicator.connected { background: var(--success); }
+    .indicator.connected { background: #10b981; }
     .indicator.speaking {
-      background: var(--success);
+      background: #10b981;
       animation: speak-pulse 0.6s ease-in-out infinite;
     }
-    .indicator.listening { background: var(--accent); }
+    .indicator.listening { background: var(--primary); }
     .indicator.hand_raised { background: #f97316; }
     .indicator.hand_raised::after {
       content: '\u270B';
@@ -331,8 +314,8 @@
       right: -6px;
       font-size: 0.6rem;
     }
-    .indicator.disconnected { background: #6b7280; }
-    .indicator.error { background: var(--danger); }
+    .indicator.disconnected { background: #9ca3af; }
+    .indicator.error { background: var(--destructive); }
 
     @keyframes pulse {
       0%, 100% { opacity: 1; }
@@ -347,12 +330,12 @@
     .member-item .member-name { font-weight: 600; }
     .member-item .member-role {
       font-size: 0.7rem;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
     }
 
     .member-item .leader-badge {
       font-size: 0.6rem;
-      background: var(--warning);
+      background: #f59e0b;
       color: #000;
       padding: 0 4px;
       border-radius: 3px;
@@ -390,8 +373,8 @@
     .msg.system {
       align-self: center;
       max-width: 60%;
-      background: var(--surface2);
-      color: var(--text-muted);
+      background: var(--muted);
+      color: var(--muted-foreground);
       text-align: center;
       font-size: 0.8rem;
       border-radius: 999px;
@@ -400,7 +383,8 @@
 
     .msg.specialist {
       align-self: flex-start;
-      background: var(--surface);
+      background: var(--card);
+      border: 1px solid var(--border);
       border-left: 3px solid var(--border);
     }
 
@@ -418,7 +402,7 @@
 
     .msg.specialist .msg-label {
       font-size: 0.7rem;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
     }
 
     .msg.specialist .msg-body { font-size: 0.85rem; line-height: 1.6; }
@@ -439,18 +423,18 @@
       padding: 0.375rem 0.5rem;
       text-align: left;
     }
-    .msg.specialist .msg-body th { background: var(--surface2); }
+    .msg.specialist .msg-body th { background: var(--muted); }
 
     .msg.user {
       align-self: flex-end;
-      background: var(--accent);
+      background: var(--primary);
       color: #fff;
     }
 
     .msg.transcript {
       align-self: flex-start;
       background: transparent;
-      color: var(--text-muted);
+      color: var(--muted-foreground);
       font-style: italic;
       font-size: 0.8rem;
       padding: 0.25rem 0.5rem;
@@ -471,9 +455,9 @@
     .msg.point-of-order {
       align-self: center;
       max-width: 70%;
-      background: #7f1d1d;
-      border: 1px solid var(--danger);
-      color: #fca5a5;
+      background: #fef2f2;
+      border: 1px solid var(--destructive);
+      color: var(--destructive);
       text-align: center;
       font-weight: 600;
     }
@@ -481,9 +465,9 @@
     .msg.hand-raised {
       align-self: center;
       max-width: 50%;
-      background: rgba(249, 115, 22, 0.15);
+      background: #fff7ed;
       border: 1px solid #f97316;
-      color: #fdba74;
+      color: #c2410c;
       text-align: center;
       font-size: 0.8rem;
     }
@@ -493,43 +477,46 @@
       display: flex;
       gap: 0.5rem;
       padding: 0.75rem 1rem;
-      background: var(--surface);
+      background: var(--card);
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
 
     .chat-input-bar input[type="text"] {
       flex: 1;
-      background: var(--bg);
+      background: var(--background);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      color: var(--text);
+      color: var(--foreground);
       padding: 0.5rem 0.75rem;
       font-size: 0.875rem;
       font-family: inherit;
     }
     .chat-input-bar input[type="text"]:focus {
-      outline: 2px solid var(--accent);
-      border-color: transparent;
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(67,97,238,0.2);
     }
 
     .chat-input-bar button {
-      background: var(--accent);
+      background: var(--primary);
       color: #fff;
       padding: 0.5rem 1rem;
+      border-radius: var(--radius);
     }
 
     .chat-input-bar .btn-upload {
-      background: var(--surface2);
-      color: var(--text);
+      background: var(--secondary);
+      color: var(--foreground);
       padding: 0.5rem 0.75rem;
+      border: 1px solid var(--border);
     }
 
     .chat-input-bar input[type="file"] { display: none; }
 
     /* Responsive */
     @media (max-width: 768px) {
-      .specialist-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+      .council-specialist-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
       .member-sidebar { width: 160px; }
     }
 
@@ -547,7 +534,7 @@
   </div>
 
   <!-- ── DISCLAIMER ── -->
-  <div class="disclaimer">
+  <div class="council-disclaimer">
     AI clinical reasoning aid. Does not replace physician clinical judgment. Not for diagnostic or treatment decisions.
   </div>
 
@@ -565,7 +552,7 @@
         <button id="btn-select-all">Select All</button>
         <button id="btn-clear">Clear</button>
       </div>
-      <div class="specialist-grid" id="specialist-grid"></div>
+      <div class="council-specialist-grid" id="specialist-grid"></div>
     </div>
 
     <div class="setup-section">
@@ -618,7 +605,7 @@
           <input type="file" id="file-input" accept="image/*" />
         </div>
 
-        <div class="disclaimer">
+        <div class="council-disclaimer">
           AI clinical reasoning aid. Does not replace physician clinical judgment. Not for diagnostic or treatment decisions.
         </div>
       </div>
